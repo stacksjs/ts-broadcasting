@@ -1,0 +1,44 @@
+{
+  "name": "ts-broadcasting",
+  "type": "module",
+  "version": "0.0.0",
+  "description": "Like our `ts-starter`, but optimized for monorepos.",
+  "author": "Chris Breuer <chris@stacksjs.org>",
+  "license": "MIT",
+  "homepage": "https://github.com/stacksjs/ts-broadcasting#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/stacksjs/ts-broadcasting.git"
+  },
+  "bugs": {
+    "url": "https://github.com/stacksjs/ts-broadcasting/issues"
+  },
+  "keywords": [
+    "ts-broadcasting"
+  ],
+  "scripts": {
+    "fresh": "bunx rimraf node_modules/ bun.lock && bun i",
+    "test": "bun test",
+    "lint": "bunx --bun eslint .",
+    "lint:fix": "bunx --bun eslint . --fix",
+    "changelog": "bunx logsmith --verbose",
+    "changelog:generate": "bunx logsmith --output CHANGELOG.md",
+    "release": "bun run changelog:generate && bunx bumpx prompt --recursive",
+    "dev:docs": "bun --bun vitepress dev docs",
+    "build:docs": "bun --bun vitepress build docs",
+    "preview:docs": "bun --bun vitepress preview docs",
+    "typecheck": "bun --bun tsc --noEmit"
+  },
+  "devDependencies": {
+    "@stacksjs/eslint-config": "^4.14.0-beta.3",
+    "better-dx": "^0.1.4"
+  },
+  "git-hooks": {
+    "pre-commit": {
+      "staged-lint": {
+        "*.{js,ts,json,yaml,yml,md}": "bunx --bun eslint --fix"
+      }
+    },
+    "commit-msg": "bunx gitlint --edit .git/COMMIT_EDITMSG"
+  }
+}
