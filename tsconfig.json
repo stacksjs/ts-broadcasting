@@ -5,13 +5,13 @@
     "moduleDetection": "force",
     "module": "esnext",
     "moduleResolution": "bundler",
+    "paths": {
+      "ts-broadcasting": ["./packages/ts-broadcasting/src/index.ts"]
+    },
     "resolveJsonModule": true,
     "types": ["bun"],
     "allowImportingTsExtensions": true,
     "strict": true,
-    "paths": {
-      "ts-broadcasting": ["./packages/ts-broadcasting/src/index.ts"]
-    },
     "strictNullChecks": true,
     "noFallthroughCasesInSwitch": true,
     "declaration": true,
