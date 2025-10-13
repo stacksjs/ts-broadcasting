@@ -1,69 +1,34 @@
 {
   "name": "ts-broadcasting",
+  "version": "1.0.0",
   "type": "module",
-  "version": "0.0.0",
-  "description": "A high-performance, Laravel-inspired broadcasting system for TypeScript, built on Bun's native WebSocket APIs.",
-  "author": "Chris Breuer <chris@stacksjs.org>",
-  "license": "MIT",
-  "homepage": "https://github.com/stacksjs/ts-broadcasting#readme",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/stacksjs/ts-broadcasting.git"
-  },
-  "bugs": {
-    "url": "https://github.com/stacksjs/ts-broadcasting/issues"
-  },
-  "keywords": [
-    "broadcasting",
-    "websocket",
-    "bun",
-    "typescript",
-    "laravel",
-    "realtime"
-  ],
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/src/index.js"
-    },
-    "./*": {
-      "import": "./dist/*"
-    }
-  },
-  "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "bin": {
-    "ts-broadcasting": "./dist/bin/cli.js"
+    "broadcast": "./bin/broadcast"
   },
   "files": [
-    "README.md",
-    "dist"
+    "dist",
+    "bin"
   ],
   "scripts": {
+    "test": "bun test",
+    "test:unit": "bun test test/unit/",
+    "test:integration": "bun test test/integration/",
+    "test:e2e": "bun test test/e2e/",
+    "test:watch": "bun test --watch",
     "build": "bun --bun build.ts && bun run compile",
     "compile": "bun build ./bin/cli.ts --compile --minify --outfile bin/broadcast",
-    "compile:all": "bun run compile:linux-x64 && bun run compile:linux-arm64 && bun run compile:windows-x64 && bun run compile:darwin-x64 && bun run compile:darwin-arm64",
-    "compile:linux-x64": "bun build ./bin/cli.ts --compile --minify --target=bun-linux-x64 --outfile bin/broadcast-linux-x64",
-    "compile:linux-arm64": "bun build ./bin/cli.ts --compile --minify --target=bun-linux-arm64 --outfile bin/broadcast-linux-arm64",
-    "compile:windows-x64": "bun build ./bin/cli.ts --compile --minify --target=bun-windows-x64 --outfile bin/broadcast-windows-x64.exe",
-    "compile:darwin-x64": "bun build ./bin/cli.ts --compile --minify --target=bun-darwin-x64 --outfile bin/broadcast-darwin-x64",
-    "compile:darwin-arm64": "bun build ./bin/cli.ts --compile --minify --target=bun-darwin-arm64 --outfile bin/broadcast-darwin-arm64",
-    "zip": "bun run zip:all",
-    "zip:all": "bun run zip:linux-x64 && bun run zip:linux-arm64 && bun run zip:windows-x64 && bun run zip:darwin-x64 && bun run zip:darwin-arm64",
-    "zip:linux-x64": "zip -j bin/broadcast-linux-x64.zip bin/broadcast-linux-x64",
-    "zip:linux-arm64": "zip -j bin/broadcast-linux-arm64.zip bin/broadcast-linux-arm64",
-    "zip:windows-x64": "zip -j bin/broadcast-windows-x64.zip bin/broadcast-windows-x64.exe",
-    "zip:darwin-x64": "zip -j bin/broadcast-darwin-x64.zip bin/broadcast-darwin-x64",
-    "zip:darwin-arm64": "zip -j bin/broadcast-darwin-arm64.zip bin/broadcast-darwin-arm64",
-    "lint": "bunx --bun eslint .",
-    "lint:fix": "bunx --bun eslint . --fix",
-    "fresh": "bunx rimraf node_modules/ bun.lock && bun i",
-    "changelog": "bunx changelogen --output CHANGELOG.md",
-    "prepublishOnly": "bun --bun run build && bun run compile:all && bun run zip",
-    "release": "bun run changelog && bunx bumpp package.json --all",
-    "test": "bun test"
+    "dev": "bun --watch bin/cli.ts start"
   },
-  "lint-staged": {
-    "*.{js,ts}": "bunx --bun eslint . --fix"
-  }
+  "keywords": [
+    "websocket",
+    "broadcasting",
+    "realtime",
+    "bun",
+    "laravel",
+    "echo"
+  ],
+  "author": "",
+  "license": "MIT"
 }

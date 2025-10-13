@@ -102,11 +102,11 @@ export interface PresenceMember {
 
 // Authorization
 export interface ChannelAuthorizationCallback {
-  (socket: ServerWebSocket<WebSocketData>, data?: unknown): boolean | PresenceMember | Promise<boolean | PresenceMember>
+  (socket: ServerWebSocket<WebSocketData>, params?: Record<string, string>): boolean | PresenceMember | Promise<boolean | PresenceMember>
 }
 
 export interface ChannelAuthorizationClass {
-  join(socket: ServerWebSocket<WebSocketData>, data?: unknown): boolean | PresenceMember | Promise<boolean | PresenceMember>
+  join(socket: ServerWebSocket<WebSocketData>, params?: Record<string, string>): boolean | PresenceMember | Promise<boolean | PresenceMember>
 }
 
 // Events

@@ -136,20 +136,47 @@ export class ChannelManager {
   ): Promise<boolean | PresenceMember> {
     // Find matching authorizer
     for (const [pattern, authorizer] of this.authorizers) {
-      const regex = this.patternToRegex(pattern)
-      if (regex.test(channelName)) {
+      const params = this.extractParams(pattern, channelName)
+      if (params !== null) {
         // Execute authorizer
         if (typeof authorizer === 'function') {
-          return await authorizer(ws, channelData)
+          return await authorizer(ws, params)
         }
         else {
-          return await authorizer.join(ws, channelData)
+          return await authorizer.join(ws, params)
         }
       }
     }
 
     // No authorizer found - deny access
     return false
+  }
+
+  /**
+   * Extract parameters from channel name using pattern
+   */
+  private extractParams(pattern: string, channelName: string): Record<string, string> | null {
+    // Extract parameter names from pattern
+    const paramNames: string[] = []
+    const regexStr = pattern.replace(/\{([^}]+)\}/g, (_, name) => {
+      paramNames.push(name)
+      return '([^.]+)'
+    })
+
+    const regex = new RegExp(`^${regexStr}$`)
+    const match = channelName.match(regex)
+
+    if (!match) {
+      return null
+    }
+
+    // Build params object
+    const params: Record<string, string> = {}
+    for (let i = 0; i < paramNames.length; i++) {
+      params[paramNames[i]] = match[i + 1]
+    }
+
+    return params
   }
 
   /**
