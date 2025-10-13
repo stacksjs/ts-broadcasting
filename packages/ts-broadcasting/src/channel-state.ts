@@ -156,7 +156,11 @@ export class ChannelNamespaceManager {
    */
   belongsTo(channel: string, namespace: string): boolean {
     const parsed = this.parse(channel)
-    return parsed.namespace === namespace
+    if (!parsed.namespace) {
+      return false
+    }
+    // Check exact match or if it's a parent namespace
+    return parsed.namespace === namespace || parsed.namespace.startsWith(namespace + this.config.separator)
   }
 
   /**

@@ -37,5 +37,9 @@ export {
 } from './middleware'
 export { BroadcastHelpers, createHelpers } from './helpers'
 
-// Client SDK
-export { default as Echo } from './client'
+// Client SDK - primary export
+export { default as BroadcastClient } from './client'
+export { BroadcastClient as Client } from './client' // Short alias
+
+// Backward compatibility (undocumented)
+export { Echo } from './client'

@@ -2,10 +2,9 @@
  * Client-side Broadcasting SDK
  *
  * A TypeScript/JavaScript client library for connecting to the broadcasting server
- * Similar to Laravel Echo but optimized for our Bun-based broadcasting system
  */
 
-export interface EchoConfig {
+export interface BroadcastClientConfig {
   broadcaster: 'bun' | 'reverb' | 'pusher' | 'ably'
   host?: string
   port?: number
@@ -66,9 +65,9 @@ export interface PendingAcknowledgment {
   timeout: Timer
 }
 
-export class Echo {
+export class BroadcastClient {
   private ws: WebSocket | null = null
-  private config: Required<EchoConfig>
+  private config: Required<BroadcastClientConfig>
   private channels: Map<string, ChannelInstance> = new Map()
   private socketId: string | null = null
   private reconnectAttempts = 0
@@ -78,7 +77,7 @@ export class Echo {
   private pendingAcks: Map<string, PendingAcknowledgment> = new Map()
   private encryptionKeys: Map<string, string> = new Map()
 
-  constructor(config: EchoConfig) {
+  constructor(config: BroadcastClientConfig) {
     this.config = {
       broadcaster: config.broadcaster || 'bun',
       host: config.host || 'localhost',
@@ -539,13 +538,13 @@ export class Echo {
  * Base channel class
  */
 export abstract class ChannelInstance<T = any> {
-  protected echo: Echo
+  protected client: BroadcastClient
   protected name: string
   protected callbacks: Map<string, Set<EventCallback<T>>> = new Map()
   protected subscribed = false
 
-  constructor(echo: Echo, name: string) {
-    this.echo = echo
+  constructor(client: BroadcastClient, name: string) {
+    this.client = client
     this.name = name
   }
 
@@ -557,7 +556,7 @@ export abstract class ChannelInstance<T = any> {
       return
     }
 
-    this.echo.send({
+    this.client.send({
       event: 'subscribe',
       channel: this.name,
     })
@@ -573,7 +572,7 @@ export abstract class ChannelInstance<T = any> {
       return
     }
 
-    this.echo.send({
+    this.client.send({
       event: 'unsubscribe',
       channel: this.name,
     })
@@ -658,7 +657,7 @@ export class PrivateChannel<T = any> extends PublicChannel<T> {
    * Send a client event (whisper)
    */
   whisper(event: string, data: any): this {
-    this.echo.send({
+    this.client.send({
       event: `client-${event}`,
       channel: this.name,
       data,
@@ -704,7 +703,7 @@ export class PresenceChannel<T = any> extends PrivateChannel<T> {
   private startPresenceHeartbeat(): void {
     // Send heartbeat every 30 seconds to stay active
     this.presenceHeartbeatTimer = setInterval(() => {
-      this.echo.send({
+      this.client.send({
         event: 'presence_heartbeat',
         channel: this.name,
         timestamp: Date.now(),
@@ -801,4 +800,8 @@ export class PresenceChannel<T = any> extends PrivateChannel<T> {
   }
 }
 
-export default Echo
+// Aliases for backward compatibility (undocumented)
+export type EchoConfig = BroadcastClientConfig
+export const Echo = BroadcastClient
+
+export default BroadcastClient
