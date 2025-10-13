@@ -123,7 +123,7 @@ export class Broadcaster {
  */
 export class BroadcastTo {
   private broadcaster: Broadcaster
-  private excludeSocketId?: string
+  public readonly excludeSocketId?: string
 
   constructor(broadcaster: Broadcaster, excludeSocketId?: string) {
     this.broadcaster = broadcaster
@@ -168,7 +168,7 @@ export class AnonymousEvent {
   private channels: string[]
   private eventName: string = 'AnonymousEvent'
   private data: unknown = {}
-  private excludeSocketId?: string
+  public readonly excludeSocketId?: string
 
   constructor(channels: string | string[]) {
     this.channels = Array.isArray(channels) ? channels : [channels]
@@ -194,8 +194,16 @@ export class AnonymousEvent {
    * Exclude a socket from receiving the broadcast
    */
   toOthers(socketId: string): this {
-    this.excludeSocketId = socketId
-    return this
+    // Create new instance with excludeSocketId set
+    const newEvent = new AnonymousEvent(this.channels)
+    newEvent.eventName = this.eventName
+    newEvent.data = this.data
+    Object.defineProperty(newEvent, 'excludeSocketId', {
+      value: socketId,
+      writable: false,
+      enumerable: true,
+    })
+    return newEvent
   }
 
   /**

@@ -33,6 +33,9 @@
     "@stacksjs/eslint-config": "^4.14.0-beta.3",
     "better-dx": "^0.1.4"
   },
+  "workspaces": [
+    "packages/**"
+  ],
   "git-hooks": {
     "pre-commit": {
       "staged-lint": {

@@ -47,10 +47,10 @@ jobs:
         uses: stacksjs/action-releaser@v1.1.0
         with:
           files: |
-            packages/ts-broadcasting/bin/ts-broadcasting-linux-x64.zip
-            packages/ts-broadcasting/bin/ts-broadcasting-linux-arm64.zip
-            packages/ts-broadcasting/bin/ts-broadcasting-windows-x64.zip
-            packages/ts-broadcasting/bin/ts-broadcasting-darwin-x64.zip
-            packages/ts-broadcasting/bin/ts-broadcasting-darwin-arm64.zip
+            packages/ts-broadcasting/bin/broadcast-linux-x64.zip
+            packages/ts-broadcasting/bin/broadcast-linux-arm64.zip
+            packages/ts-broadcasting/bin/broadcast-windows-x64.zip
+            packages/ts-broadcasting/bin/broadcast-darwin-x64.zip
+            packages/ts-broadcasting/bin/broadcast-darwin-arm64.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

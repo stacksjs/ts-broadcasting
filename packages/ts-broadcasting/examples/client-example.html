@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Broadcasting Client Example</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 20px;
+        }
+        .container {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        .connected { background: #d4edda; color: #155724; }
+        .disconnected { background: #f8d7da; color: #721c24; }
+        .message {
+            padding: 8px;
+            margin: 5px 0;
+            background: #f8f9fa;
+            border-left: 3px solid #007bff;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 8px;
+        }
+        button:hover { background: #0056b3; }
+        input {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 200px;
+        }
+        #messages {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Broadcasting Client Example</h1>
+
+    <div class="container">
+        <div id="status" class="status disconnected">Disconnected</div>
+        <button id="connect">Connect</button>
+        <button id="disconnect">Disconnect</button>
+    </div>
+
+    <div class="container">
+        <h3>Public Channel</h3>
+        <button id="subscribePublic">Subscribe to "announcements"</button>
+        <button id="unsubscribePublic">Unsubscribe</button>
+    </div>
+
+    <div class="container">
+        <h3>Private Channel</h3>
+        <input type="text" id="userId" placeholder="User ID" value="123">
+        <button id="subscribePrivate">Subscribe to Private User Channel</button>
+        <button id="unsubscribePrivate">Unsubscribe</button>
+    </div>
+
+    <div class="container">
+        <h3>Presence Channel</h3>
+        <input type="text" id="roomId" placeholder="Room ID" value="room1">
+        <button id="subscribePresence">Join Chat Room</button>
+        <button id="unsubscribePresence">Leave Room</button>
+        <div id="members"></div>
+    </div>
+
+    <div class="container">
+        <h3>Messages</h3>
+        <div id="messages"></div>
+    </div>
+
+    <script>
+        let ws = null;
+        let socketId = null;
+
+        const status = document.getElementById('status');
+        const messages = document.getElementById('messages');
+
+        function addMessage(text, data = null) {
+            const div = document.createElement('div');
+            div.className = 'message';
+            div.innerHTML = `
+                <strong>${new Date().toLocaleTimeString()}</strong>: ${text}
+                ${data ? `<pre>${JSON.stringify(data, null, 2)}</pre>` : ''}
+            `;
+            messages.insertBefore(div, messages.firstChild);
+        }
+
+        function updateStatus(connected) {
+            status.className = `status ${connected ? 'connected' : 'disconnected'}`;
+            status.textContent = connected ? `Connected (Socket ID: ${socketId})` : 'Disconnected';
+        }
+
+        document.getElementById('connect').onclick = () => {
+            if (ws) return;
+
+            ws = new WebSocket('ws://localhost:6001/ws');
+
+            ws.onopen = () => {
+                addMessage('WebSocket connected');
+            };
+
+            ws.onmessage = (event) => {
+                const message = JSON.parse(event.data);
+
+                switch(message.event) {
+                    case 'connection_established':
+                        socketId = message.data.socket_id;
+                        updateStatus(true);
+                        addMessage('Connection established', message.data);
+                        break;
+
+                    case 'subscription_succeeded':
+                        addMessage(`Subscribed to channel: ${message.channel}`);
+                        if (message.data?.presence) {
+                            updateMembers(message.data.presence);
+                        }
+                        break;
+
+                    case 'subscription_error':
+                        addMessage(`Subscription failed: ${message.data.error}`, message.data);
+                        break;
+
+                    case 'member_added':
+                        addMessage(`Member joined: ${message.data.info.name}`, message.data);
+                        break;
+
+                    case 'member_removed':
+                        addMessage(`Member left: ${message.data.info.name}`, message.data);
+                        break;
+
+                    case 'pong':
+                        addMessage('Pong received');
+                        break;
+
+                    default:
+                        addMessage(`Event: ${message.event}`, message);
+                }
+            };
+
+            ws.onclose = () => {
+                addMessage('WebSocket disconnected');
+                updateStatus(false);
+                ws = null;
+                socketId = null;
+            };
+
+            ws.onerror = (error) => {
+                addMessage('WebSocket error', error);
+            };
+        };
+
+        document.getElementById('disconnect').onclick = () => {
+            if (ws) {
+                ws.close();
+            }
+        };
+
+        document.getElementById('subscribePublic').onclick = () => {
+            if (!ws) return alert('Please connect first');
+            ws.send(JSON.stringify({
+                event: 'subscribe',
+                channel: 'announcements'
+            }));
+        };
+
+        document.getElementById('unsubscribePublic').onclick = () => {
+            if (!ws) return alert('Please connect first');
+            ws.send(JSON.stringify({
+                event: 'unsubscribe',
+                channel: 'announcements'
+            }));
+        };
+
+        document.getElementById('subscribePrivate').onclick = () => {
+            if (!ws) return alert('Please connect first');
+            const userId = document.getElementById('userId').value;
+            ws.send(JSON.stringify({
+                event: 'subscribe',
+                channel: `private-user.${userId}`
+            }));
+        };
+
+        document.getElementById('unsubscribePrivate').onclick = () => {
+            if (!ws) return alert('Please connect first');
+            const userId = document.getElementById('userId').value;
+            ws.send(JSON.stringify({
+                event: 'unsubscribe',
+                channel: `private-user.${userId}`
+            }));
+        };
+
+        document.getElementById('subscribePresence').onclick = () => {
+            if (!ws) return alert('Please connect first');
+            const roomId = document.getElementById('roomId').value;
+            ws.send(JSON.stringify({
+                event: 'subscribe',
+                channel: `presence-chat.${roomId}`,
+                channel_data: {
+                    user_id: socketId,
+                    user_info: {
+                        name: 'Demo User'
+                    }
+                }
+            }));
+        };
+
+        document.getElementById('unsubscribePresence').onclick = () => {
+            if (!ws) return alert('Please connect first');
+            const roomId = document.getElementById('roomId').value;
+            ws.send(JSON.stringify({
+                event: 'unsubscribe',
+                channel: `presence-chat.${roomId}`
+            }));
+        };
+
+        function updateMembers(presence) {
+            const membersDiv = document.getElementById('members');
+            membersDiv.innerHTML = `
+                <h4>Room Members (${presence.count})</h4>
+                <ul>
+                    ${Object.values(presence.hash).map(member =>
+                        `<li>${member.info.name} (ID: ${member.id})</li>`
+                    ).join('')}
+                </ul>
+            `;
+        }
+    </script>
+</body>
+</html>
