@@ -4,15 +4,15 @@
  * Tests for rate limiting functionality
  */
 
-import { describe, expect, it, beforeEach, afterEach } from 'bun:test'
-import { BroadcastServer } from '../../src/server'
+import type { BroadcastServer } from '../../src/server'
+import { afterEach, beforeEach, describe, expect, it } from 'bun:test'
 import {
-  createTestServer,
-  createTestClient,
-  waitForMessage,
-  closeWebSocket,
   cleanupTestServer,
+  closeWebSocket,
+  createTestClient,
+  createTestServer,
   getServerPort,
+  waitForMessage,
 } from '../helpers/test-server'
 
 describe('Rate Limiting', () => {
@@ -123,10 +123,12 @@ describe('Rate Limiting', () => {
   describe('Per-Connection Rate Limiting', () => {
     it('should track rate limits separately per connection', async () => {
       const ws1 = await createTestClient(port)
-      const ws2 = await createTestClient(port)
+      const ws1ConnPromise = waitForMessage(ws1, 'connection_established')
 
-      await waitForMessage(ws1, 'connection_established')
-      await waitForMessage(ws2, 'connection_established')
+      const ws2 = await createTestClient(port)
+      const ws2ConnPromise = waitForMessage(ws2, 'connection_established')
+
+      await Promise.all([ws1ConnPromise, ws2ConnPromise])
 
       // Exceed limit on ws1
       for (let i = 0; i < 15; i++) {

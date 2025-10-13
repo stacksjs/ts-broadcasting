@@ -4,7 +4,7 @@
  * Tests for message persistence and history functionality
  */
 
-import { describe, expect, it, beforeEach } from 'bun:test'
+import { beforeEach, describe, expect, it } from 'bun:test'
 import { PersistenceManager } from '../../src/persistence'
 
 describe('PersistenceManager', () => {
@@ -57,9 +57,9 @@ describe('PersistenceManager', () => {
 
         const history = await manager.getHistory('test-channel')
         expect(history.length).toBe(3)
-        expect(history[0].data.text).toBe('First')
-        expect(history[1].data.text).toBe('Second')
-        expect(history[2].data.text).toBe('Third')
+        expect((history[0].data as any).text).toBe('First')
+        expect((history[1].data as any).text).toBe('Second')
+        expect((history[2].data as any).text).toBe('Third')
       })
 
       it('should handle multiple channels independently', async () => {
@@ -71,8 +71,8 @@ describe('PersistenceManager', () => {
 
         expect(history1.length).toBe(1)
         expect(history2.length).toBe(1)
-        expect(history1[0].data.text).toBe('Channel 1')
-        expect(history2[0].data.text).toBe('Channel 2')
+        expect((history1[0].data as any).text).toBe('Channel 1')
+        expect((history2[0].data as any).text).toBe('Channel 2')
       })
     })
 
@@ -97,15 +97,15 @@ describe('PersistenceManager', () => {
 
         const filtered = await manager.getHistory('test-channel', middleTime)
         expect(filtered.length).toBe(2) // messages 2 and 3
-        expect(filtered[0].data.num).toBe(2)
-        expect(filtered[1].data.num).toBe(3)
+        expect((filtered[0].data as any).num).toBe(2)
+        expect((filtered[1].data as any).num).toBe(3)
       })
 
       it('should limit number of messages', async () => {
         const history = await manager.getHistory('test-channel', undefined, 2)
         expect(history.length).toBe(2)
-        expect(history[0].data.num).toBe(1)
-        expect(history[1].data.num).toBe(2)
+        expect((history[0].data as any).num).toBe(1)
+        expect((history[1].data as any).num).toBe(2)
       })
 
       it('should combine timestamp filter and limit', async () => {
@@ -114,8 +114,8 @@ describe('PersistenceManager', () => {
 
         const filtered = await manager.getHistory('test-channel', firstTime, 2)
         expect(filtered.length).toBe(2)
-        expect(filtered[0].data.num).toBe(1)
-        expect(filtered[1].data.num).toBe(2)
+        expect((filtered[0].data as any).num).toBe(1)
+        expect((filtered[1].data as any).num).toBe(2)
       })
 
       it('should return empty array for non-existent channel', async () => {
@@ -140,8 +140,8 @@ describe('PersistenceManager', () => {
         const history = await manager.getHistory('test-channel')
         expect(history.length).toBe(5)
         // Should keep the most recent messages
-        expect(history[0].data.num).toBe(5)
-        expect(history[4].data.num).toBe(9)
+        expect((history[0].data as any).num).toBe(5)
+        expect((history[4].data as any).num).toBe(9)
       })
     })
 
@@ -255,8 +255,7 @@ describe('PersistenceManager', () => {
 
       it('should handle concurrent stores', async () => {
         const promises = Array.from({ length: 10 }, (_, i) =>
-          manager.store('test-channel', 'message', { num: i }),
-        )
+          manager.store('test-channel', 'message', { num: i }))
 
         await Promise.all(promises)
         const history = await manager.getHistory('test-channel')

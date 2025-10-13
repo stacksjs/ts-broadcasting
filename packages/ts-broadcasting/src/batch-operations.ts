@@ -5,8 +5,8 @@
  */
 
 import type { ServerWebSocket } from 'bun'
-import type { WebSocketData } from './types'
 import type { ChannelManager } from './channels'
+import type { WebSocketData } from './types'
 
 export interface BatchConfig {
   enabled?: boolean
@@ -35,7 +35,7 @@ export class BatchOperationsManager {
   private config: Required<BatchConfig>
   private channelManager: ChannelManager
 
-  constructor(config: BatchConfig = {}, channelManager: ChannelManager) {
+  constructor(config: BatchConfig | undefined = {}, channelManager: ChannelManager) {
     this.config = {
       enabled: config.enabled ?? true,
       maxBatchSize: config.maxBatchSize ?? 50,

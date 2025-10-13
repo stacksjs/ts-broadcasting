@@ -4,9 +4,9 @@
  * Helper functions for creating and managing test servers
  */
 
-import type { ServerWebSocket } from 'bun'
-import { BroadcastServer, type ServerConfig } from '../../src'
-import type { WebSocketData } from '../../src/types'
+import type { ServerConfig } from '../../src'
+import process from 'node:process'
+import { BroadcastServer } from '../../src'
 
 export interface TestServerOptions {
   port?: number
@@ -124,7 +124,7 @@ export function waitForMessage(
           resolve(data)
         }
       }
-      catch (error) {
+      catch {
         // Ignore parse errors
       }
     }
@@ -168,8 +168,12 @@ export async function closeWebSocket(ws: WebSocket): Promise<void> {
 /**
  * Clean up test server
  */
-export async function cleanupTestServer(server: BroadcastServer): Promise<void> {
-  await server.stop()
+export async function cleanupTestServer(server?: BroadcastServer): Promise<void> {
+  if (server) {
+    await server.stop()
+    // Give the server time to fully release the port
+    await new Promise(resolve => setTimeout(resolve, 50))
+  }
 }
 
 /**

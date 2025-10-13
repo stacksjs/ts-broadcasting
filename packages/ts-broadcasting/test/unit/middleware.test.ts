@@ -4,16 +4,16 @@
  * Tests for all middleware components
  */
 
-import { describe, expect, it, beforeEach, afterEach, mock } from 'bun:test'
-import {
-  AuthenticationManager,
-  RateLimiter,
-  MonitoringManager,
-  MessageValidationManager,
-  SecurityManager,
-} from '../../src/middleware'
 import type { ServerWebSocket } from 'bun'
 import type { WebSocketData } from '../../src/types'
+import { afterEach, beforeEach, describe, expect, it } from 'bun:test'
+import {
+  AuthenticationManager,
+  MessageValidationManager,
+  MonitoringManager,
+  RateLimiter,
+  SecurityManager,
+} from '../../src/middleware'
 
 describe('AuthenticationManager', () => {
   let auth: AuthenticationManager
@@ -43,7 +43,7 @@ describe('AuthenticationManager', () => {
   })
 
   it('should return null for invalid authentication', async () => {
-    auth.authenticate(async (req) => null)
+    auth.authenticate(async _req => null)
 
     const req = new Request('http://localhost')
     const user = await auth.authenticateRequest(req)
@@ -52,7 +52,7 @@ describe('AuthenticationManager', () => {
   })
 
   it('should extract token from cookie', async () => {
-    auth.authenticate(async (req) => {
+    auth.authenticate(async (_req) => {
       // In real scenario, auth would check cookies
       return { id: 456, name: 'Jane' }
     })
@@ -66,7 +66,7 @@ describe('AuthenticationManager', () => {
   })
 
   it('should handle authentication errors gracefully', async () => {
-    auth.authenticate(async (req) => {
+    auth.authenticate(async (_req) => {
       throw new Error('Auth service down')
     })
 
@@ -201,7 +201,7 @@ describe('MonitoringManager', () => {
   it('should support multiple event types', () => {
     const events: any[] = []
 
-    monitoring.on('all', (event) => events.push(event))
+    monitoring.on('all', event => events.push(event))
 
     monitoring.emit({ type: 'connection', timestamp: Date.now(), socketId: 's1' })
     monitoring.emit({ type: 'broadcast', timestamp: Date.now(), socketId: 's2', channel: 'news' })
@@ -236,7 +236,7 @@ describe('MonitoringManager', () => {
   it('should handle wildcard "all" event type', () => {
     const events: any[] = []
 
-    monitoring.on('all', (event) => events.push(event))
+    monitoring.on('all', event => events.push(event))
 
     monitoring.emit({ type: 'connection', timestamp: Date.now(), socketId: 's1' })
     monitoring.emit({ type: 'broadcast', timestamp: Date.now(), socketId: 's2', channel: 'news' })
@@ -254,7 +254,7 @@ describe('MessageValidationManager', () => {
 
   it('should validate messages with custom validators', () => {
     validator.addValidator((message) => {
-      if (!message.event) {
+      if (!(message as any).event) {
         return 'Event is required'
       }
       return true
@@ -267,14 +267,14 @@ describe('MessageValidationManager', () => {
 
   it('should support multiple validators', () => {
     validator.addValidator((message) => {
-      if (!message.event) {
+      if (!(message as any).event) {
         return 'Event required'
       }
       return true
     })
 
     validator.addValidator((message) => {
-      if (message.event && message.event.length > 100) {
+      if ((message as any).event && (message as any).event.length > 100) {
         return 'Event too long'
       }
       return true
@@ -357,11 +357,11 @@ describe('SecurityManager', () => {
       title: '<img src=x onerror=alert(1)>',
     }
 
-    const sanitized = security.sanitize(malicious) as any
+    const sanitized = security.sanitize(malicious)
 
-    expect(sanitized.message).not.toContain('<script>')
-    expect(sanitized.message).toContain('&lt;') // Escaped
-    expect(sanitized.title).toContain('&lt;') // Tags are escaped
+    expect((sanitized as any).message).not.toContain('<script>')
+    expect((sanitized as any).message).toContain('&lt;') // Escaped
+    expect((sanitized as any).title).toContain('&lt;') // Tags are escaped
     // Note: "onerror=" is also escaped as "onerror="
   })
 
@@ -399,15 +399,15 @@ describe('SecurityManager', () => {
       number: 123,
       boolean: true,
       null: null,
-      undefined: undefined,
+      undefined,
       date: new Date(),
     }
 
     const sanitized = security.sanitize(data)
 
-    expect(sanitized.number).toBe(123)
-    expect(sanitized.boolean).toBe(true)
-    expect(sanitized.null).toBeNull()
+    expect((sanitized as any).number).toBe(123)
+    expect((sanitized as any).boolean).toBe(true)
+    expect((sanitized as any).null).toBeNull()
   })
 
   it('should handle deeply nested structures', () => {
@@ -440,6 +440,6 @@ describe('SecurityManager', () => {
     const malicious = { message: '<script>alert(1)</script>' }
     const result = noSanitize.sanitize(malicious)
 
-    expect(result.message).toBe('<script>alert(1)</script>')
+    expect((result as any).message).toBe('<script>alert(1)</script>')
   })
 })

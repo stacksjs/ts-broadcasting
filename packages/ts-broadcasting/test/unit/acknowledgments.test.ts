@@ -4,7 +4,7 @@
  * Tests for message acknowledgments and delivery confirmation
  */
 
-import { describe, expect, it, beforeEach, afterEach } from 'bun:test'
+import { afterEach, beforeEach, describe, expect, it } from 'bun:test'
 import { AcknowledgmentManager } from '../../src/acknowledgments'
 
 describe('AcknowledgmentManager', () => {
@@ -21,7 +21,7 @@ describe('AcknowledgmentManager', () => {
   afterEach(async () => {
     // Clear all pending and catch rejections
     const pending = manager.getPending()
-    pending.forEach(p => {
+    pending.forEach((p) => {
       p.reject = () => {} // Replace reject to avoid unhandled promise rejections
     })
     manager.clear()
@@ -218,9 +218,8 @@ describe('AcknowledgmentManager', () => {
     })
 
     it('should handle concurrent registrations', () => {
-      const promises = Array.from({ length: 10 }, (_, i) =>
-        manager.register(`msg-${i}`, 'channel', 'event', {}, 'socket'),
-      )
+      const _promises = Array.from({ length: 10 }, (_, i) =>
+        manager.register(`msg-${i}`, 'channel', 'event', {}, 'socket'))
 
       expect(manager.getPending().length).toBe(10)
     })

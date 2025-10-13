@@ -1,15 +1,25 @@
 {
   "name": "ts-broadcasting",
-  "version": "1.0.0",
   "type": "module",
+  "version": "1.0.0",
+  "author": "",
+  "license": "MIT",
+  "keywords": [
+    "websocket",
+    "broadcasting",
+    "realtime",
+    "bun",
+    "laravel",
+    "echo"
+  ],
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
     "broadcast": "./bin/broadcast"
   },
   "files": [
-    "dist",
-    "bin"
+    "bin",
+    "dist"
   ],
   "scripts": {
     "test": "bun test",
@@ -20,15 +30,5 @@
     "build": "bun --bun build.ts && bun run compile",
     "compile": "bun build ./bin/cli.ts --compile --minify --outfile bin/broadcast",
     "dev": "bun --watch bin/cli.ts start"
-  },
-  "keywords": [
-    "websocket",
-    "broadcasting",
-    "realtime",
-    "bun",
-    "laravel",
-    "echo"
-  ],
-  "author": "",
-  "license": "MIT"
+  }
 }

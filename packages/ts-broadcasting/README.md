@@ -65,8 +65,8 @@ await server.start()
 ### 3. Broadcast Events
 
 ```typescript
-import { Broadcaster, BroadcastServer, config } from 'ts-broadcasting'
 import type { BroadcastEvent } from 'ts-broadcasting'
+import { AnonymousEvent, Broadcaster, BroadcastServer, config } from 'ts-broadcasting'
 
 // Method 1: Using BroadcastEvent interface
 class OrderShipped implements BroadcastEvent {
@@ -104,9 +104,6 @@ broadcaster.send('announcements', 'SystemMessage', {
   message: 'Scheduled maintenance tonight',
   type: 'warning',
 })
-
-// Method 3: Anonymous events
-import { AnonymousEvent } from 'ts-broadcasting'
 
 new AnonymousEvent('notifications')
   .as('NewNotification')
@@ -363,12 +360,14 @@ ws.onmessage = (event) => {
 Enable per-message compression for large payloads:
 
 ```typescript
-connections: {
-  bun: {
-    options: {
-      perMessageDeflate: {
-        compress: true,
-        decompress: true,
+const config = {
+  connections: {
+    bun: {
+      options: {
+        perMessageDeflate: {
+          compress: true,
+          decompress: true,
+        },
       },
     },
   },

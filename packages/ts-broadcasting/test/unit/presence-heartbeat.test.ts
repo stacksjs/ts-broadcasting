@@ -4,7 +4,7 @@
  * Tests for presence heartbeat and auto-removal
  */
 
-import { describe, expect, it, beforeEach, afterEach } from 'bun:test'
+import { afterEach, beforeEach, describe, expect, it } from 'bun:test'
 import { PresenceHeartbeatManager } from '../../src/presence-heartbeat'
 
 describe('PresenceHeartbeatManager', () => {

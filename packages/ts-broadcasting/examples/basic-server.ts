@@ -5,12 +5,12 @@ async function main() {
   const server = new BroadcastServer(config)
 
   // Define channel authorizations
-  server.channels.channel('private-user.{userId}', (ws, data) => {
+  server.channels.channel('private-user.{userId}', (ws, _data) => {
     // Only allow users to subscribe to their own private channel
     return ws.data.user?.id === Number.parseInt((ws.data.channels.values().next().value as string).split('.')[1])
   })
 
-  server.channels.channel('presence-chat.{roomId}', (ws, data) => {
+  server.channels.channel('presence-chat.{roomId}', (ws, _data) => {
     // Return user info for presence channels
     return {
       id: ws.data.user?.id || ws.data.socketId,
@@ -22,8 +22,8 @@ async function main() {
 
   await server.start()
 
-  console.log('Broadcasting server is running!')
-  console.log('Connect with: ws://localhost:6001/ws')
+  console.warn('Broadcasting server is running!')
+  console.warn('Connect with: ws://localhost:6001/ws')
 }
 
 main().catch(console.error)

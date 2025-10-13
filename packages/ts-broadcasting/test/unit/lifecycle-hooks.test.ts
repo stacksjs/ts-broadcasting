@@ -4,9 +4,9 @@
  * Tests for channel lifecycle hooks and events
  */
 
-import { describe, expect, it, beforeEach } from 'bun:test'
-import { ChannelLifecycleManager } from '../../src/lifecycle-hooks'
 import type { ChannelLifecycleEvent } from '../../src/lifecycle-hooks'
+import { beforeEach, describe, expect, it } from 'bun:test'
+import { ChannelLifecycleManager } from '../../src/lifecycle-hooks'
 
 describe('ChannelLifecycleManager', () => {
   let manager: ChannelLifecycleManager
@@ -37,7 +37,7 @@ describe('ChannelLifecycleManager', () => {
     it('should register hooks for different events', () => {
       const events: ChannelLifecycleEvent[] = ['created', 'subscribed', 'unsubscribed', 'empty', 'destroyed']
 
-      events.forEach(event => {
+      events.forEach((event) => {
         expect(() => {
           manager.on(event, () => {})
         }).not.toThrow()
@@ -358,8 +358,7 @@ describe('ChannelLifecycleManager', () => {
       })
 
       const promises = Array.from({ length: 100 }, (_, i) =>
-        manager.channelCreated(`channel-${i}`),
-      )
+        manager.channelCreated(`channel-${i}`))
 
       await Promise.all(promises)
 

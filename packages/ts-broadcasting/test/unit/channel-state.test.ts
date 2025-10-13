@@ -4,8 +4,8 @@
  * Tests for channel state management and namespacing
  */
 
-import { describe, expect, it, beforeEach } from 'bun:test'
-import { ChannelStateManager, ChannelNamespaceManager } from '../../src/channel-state'
+import { beforeEach, describe, expect, it } from 'bun:test'
+import { ChannelNamespaceManager, ChannelStateManager } from '../../src/channel-state'
 
 describe('ChannelStateManager', () => {
   let manager: ChannelStateManager

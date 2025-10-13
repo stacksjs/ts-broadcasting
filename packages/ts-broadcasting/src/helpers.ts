@@ -4,8 +4,8 @@
  * Convenient helper functions for common broadcasting patterns
  */
 
-import type { BroadcastServer } from './server'
 import type { Broadcaster } from './broadcaster'
+import type { BroadcastServer } from './server'
 
 export class BroadcastHelpers {
   private server: BroadcastServer

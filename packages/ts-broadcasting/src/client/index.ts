@@ -18,7 +18,9 @@ export interface BroadcastClientConfig {
   }
   autoConnect?: boolean
   reconnect?: boolean
+  autoReconnect?: boolean // Alias for reconnect
   reconnectDelay?: number
+  reconnectInterval?: number // Alias for reconnectDelay
   maxReconnectAttempts?: number
   // New features
   encryption?: {
@@ -65,17 +67,50 @@ export interface PendingAcknowledgment {
   timeout: Timer
 }
 
+/**
+ * Connector class for managing WebSocket connection events
+ */
+export class Connector {
+  private eventCallbacks: Map<string, Set<EventCallback>> = new Map()
+
+  on(event: string, callback: EventCallback): void {
+    if (!this.eventCallbacks.has(event)) {
+      this.eventCallbacks.set(event, new Set())
+    }
+    this.eventCallbacks.get(event)!.add(callback)
+  }
+
+  off(event: string, callback?: EventCallback): void {
+    if (!callback) {
+      this.eventCallbacks.delete(event)
+    }
+    else {
+      this.eventCallbacks.get(event)?.delete(callback)
+    }
+  }
+
+  emit(event: string, data?: any): void {
+    const callbacks = this.eventCallbacks.get(event)
+    if (callbacks) {
+      for (const callback of callbacks) {
+        callback(data)
+      }
+    }
+  }
+}
+
 export class BroadcastClient {
   private ws: WebSocket | null = null
   private config: Required<BroadcastClientConfig>
   private channels: Map<string, ChannelInstance> = new Map()
-  private socketId: string | null = null
+  private _socketId: string | null = null
   private reconnectAttempts = 0
   private reconnectTimer: Timer | null = null
   private messageQueue: Array<{ message: string, ack?: boolean, messageId?: string }> = []
   private heartbeatTimer: Timer | null = null
   private pendingAcks: Map<string, PendingAcknowledgment> = new Map()
   private encryptionKeys: Map<string, string> = new Map()
+  public connector: Connector = new Connector()
 
   constructor(config: BroadcastClientConfig) {
     this.config = {
@@ -88,8 +123,10 @@ export class BroadcastClient {
       encrypted: config.encrypted ?? false,
       auth: config.auth || {},
       autoConnect: config.autoConnect ?? true,
-      reconnect: config.reconnect ?? true,
-      reconnectDelay: config.reconnectDelay || 1000,
+      reconnect: (config.reconnect ?? config.autoReconnect) ?? true,
+      autoReconnect: (config.autoReconnect ?? config.reconnect) ?? true,
+      reconnectDelay: (config.reconnectDelay ?? config.reconnectInterval) || 1000,
+      reconnectInterval: (config.reconnectInterval ?? config.reconnectDelay) || 1000,
       maxReconnectAttempts: config.maxReconnectAttempts || 10,
       encryption: {
         enabled: config.encryption?.enabled ?? false,
@@ -139,6 +176,9 @@ export class BroadcastClient {
     this.ws.onopen = () => {
       this.reconnectAttempts = 0
 
+      // Emit connect event
+      this.connector.emit('connect')
+
       // Start heartbeat if enabled
       if (this.config.heartbeat.enabled) {
         this.startHeartbeat()
@@ -163,17 +203,22 @@ export class BroadcastClient {
     }
 
     this.ws.onclose = () => {
-      this.socketId = null
+      this._socketId = null
       this.stopHeartbeat()
+
+      // Emit disconnect event
+      this.connector.emit('disconnect')
 
       if (this.config.reconnect && this.reconnectAttempts < this.config.maxReconnectAttempts) {
         this.reconnectAttempts++
-        const delay = Math.min(this.config.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1), 30000)
+        const delay = Math.min(this.config.reconnectDelay * 2 ** (this.reconnectAttempts - 1), 30000)
         this.reconnectTimer = setTimeout(() => this.connect(), delay)
       }
     }
 
     this.ws.onerror = (error) => {
+      // Emit error event
+      this.connector.emit('error', error)
       console.error('WebSocket error:', error)
     }
   }
@@ -196,13 +241,32 @@ export class BroadcastClient {
     }
     this.pendingAcks.clear()
 
+    // Unsubscribe from all channels
+    for (const channel of this.channels.values()) {
+      channel.unsubscribe()
+    }
+
     if (this.ws) {
       this.ws.close()
       this.ws = null
     }
 
     this.channels.clear()
-    this.socketId = null
+    this._socketId = null
+  }
+
+  /**
+   * Check if connected to the server
+   */
+  isConnected(): boolean {
+    return this.ws?.readyState === WebSocket.OPEN
+  }
+
+  /**
+   * Get the socket ID
+   */
+  socketId(): string | null {
+    return this._socketId
   }
 
   /**
@@ -211,11 +275,11 @@ export class BroadcastClient {
   channel<T = any>(channelName: string): PublicChannel<T> {
     if (!this.channels.has(channelName)) {
       const channel = new PublicChannel<T>(this, channelName)
-      this.channels.set(channelName, channel)
+      this.channels.set(channelName, channel as any)
       channel.subscribe()
     }
 
-    return this.channels.get(channelName) as PublicChannel<T>
+    return this.channels.get(channelName) as unknown as PublicChannel<T>
   }
 
   /**
@@ -226,11 +290,11 @@ export class BroadcastClient {
 
     if (!this.channels.has(fullName)) {
       const channel = new PrivateChannel<T>(this, fullName)
-      this.channels.set(fullName, channel)
+      this.channels.set(fullName, channel as any)
       channel.subscribe()
     }
 
-    return this.channels.get(fullName) as PrivateChannel<T>
+    return this.channels.get(fullName) as unknown as PrivateChannel<T>
   }
 
   /**
@@ -241,11 +305,11 @@ export class BroadcastClient {
 
     if (!this.channels.has(fullName)) {
       const channel = new PresenceChannel<T>(this, fullName)
-      this.channels.set(fullName, channel)
+      this.channels.set(fullName, channel as any)
       channel.subscribe()
     }
 
-    return this.channels.get(fullName) as PresenceChannel<T>
+    return this.channels.get(fullName) as unknown as PresenceChannel<T>
   }
 
   /**
@@ -276,11 +340,11 @@ export class BroadcastClient {
     channelNames: string[],
     channelData?: Record<string, unknown>,
   ): Promise<{ succeeded: string[], failed: Record<string, string> }> {
-    if (!this.config.batch.enabled) {
+    if (!this.config.batch?.enabled) {
       throw new Error('Batch operations are disabled')
     }
 
-    if (channelNames.length > this.config.batch.maxBatchSize) {
+    if (channelNames.length > (this.config.batch?.maxBatchSize ?? 50)) {
       throw new Error(`Batch size exceeds maximum: ${channelNames.length} > ${this.config.batch.maxBatchSize}`)
     }
 
@@ -299,8 +363,8 @@ export class BroadcastClient {
         reject(new Error('Batch subscribe timeout'))
       }, 10000)
 
-      const handler = (event: string, data: any) => {
-        if (event === 'batch_subscribe_result' && data.messageId === messageId) {
+      const handler = (data: any) => {
+        if (data?.messageId === messageId) {
           clearTimeout(timeout)
           resolve(data)
         }
@@ -317,11 +381,11 @@ export class BroadcastClient {
   async batchUnsubscribe(
     channelNames: string[],
   ): Promise<{ succeeded: string[], failed: Record<string, string> }> {
-    if (!this.config.batch.enabled) {
+    if (!this.config.batch?.enabled) {
       throw new Error('Batch operations are disabled')
     }
 
-    if (channelNames.length > this.config.batch.maxBatchSize) {
+    if (channelNames.length > (this.config.batch?.maxBatchSize ?? 50)) {
       throw new Error(`Batch size exceeds maximum: ${channelNames.length} > ${this.config.batch.maxBatchSize}`)
     }
 
@@ -339,8 +403,8 @@ export class BroadcastClient {
         reject(new Error('Batch unsubscribe timeout'))
       }, 10000)
 
-      const handler = (event: string, data: any) => {
-        if (event === 'batch_unsubscribe_result' && data.messageId === messageId) {
+      const handler = (data: any) => {
+        if (data?.messageId === messageId) {
           clearTimeout(timeout)
           resolve(data)
         }
@@ -352,10 +416,10 @@ export class BroadcastClient {
   }
 
   /**
-   * Get the socket ID
+   * Get the socket ID (deprecated, use socketId() instead)
    */
   getSocketId(): string | null {
-    return this.socketId
+    return this._socketId
   }
 
   /**
@@ -482,9 +546,9 @@ export class BroadcastClient {
     if (this.ws?.readyState === WebSocket.OPEN) {
       this.ws.send(data)
     }
-    else if (this.config.offlineQueue.enabled) {
+    else if (this.config.offlineQueue?.enabled) {
       // Queue message for later
-      if (this.messageQueue.length < this.config.offlineQueue.maxSize) {
+      if (this.messageQueue.length < (this.config.offlineQueue.maxSize ?? 100)) {
         this.messageQueue.push({ message: data })
       }
       else {
@@ -502,7 +566,7 @@ export class BroadcastClient {
 
       // Handle connection established
       if (message.event === 'connection_established') {
-        this.socketId = message.data.socket_id
+        this._socketId = message.data.socket_id
         return
       }
 
@@ -541,7 +605,7 @@ export abstract class ChannelInstance<T = any> {
   protected client: BroadcastClient
   protected name: string
   protected callbacks: Map<string, Set<EventCallback<T>>> = new Map()
-  protected subscribed = false
+  public isSubscribed = false
 
   constructor(client: BroadcastClient, name: string) {
     this.client = client
@@ -552,7 +616,7 @@ export abstract class ChannelInstance<T = any> {
    * Subscribe to the channel
    */
   subscribe(): void {
-    if (this.subscribed) {
+    if (this.isSubscribed) {
       return
     }
 
@@ -561,14 +625,14 @@ export abstract class ChannelInstance<T = any> {
       channel: this.name,
     })
 
-    this.subscribed = true
+    // Don't set isSubscribed = true here, wait for subscription_succeeded
   }
 
   /**
    * Unsubscribe from the channel
    */
   unsubscribe(): void {
-    if (!this.subscribed) {
+    if (!this.isSubscribed) {
       return
     }
 
@@ -577,7 +641,7 @@ export abstract class ChannelInstance<T = any> {
       channel: this.name,
     })
 
-    this.subscribed = false
+    this.isSubscribed = false
     this.callbacks.clear()
   }
 
@@ -614,6 +678,15 @@ export abstract class ChannelInstance<T = any> {
    * Handle an event from the server
    */
   handleEvent(event: string, data: any): void {
+    // Handle subscription success
+    if (event === 'subscription_succeeded') {
+      this.isSubscribed = true
+    }
+    // Handle subscription error
+    else if (event === 'subscription_error') {
+      this.isSubscribed = false
+    }
+
     const callbacks = this.callbacks.get(event)
     if (callbacks) {
       for (const callback of callbacks) {
@@ -736,7 +809,7 @@ export class PresenceChannel<T = any> extends PrivateChannel<T> {
       if (callbacks) {
         const membersList = Array.from(this.members.values())
         for (const callback of callbacks) {
-          callback(membersList)
+          callback(membersList as any)
         }
       }
     }
@@ -802,6 +875,6 @@ export class PresenceChannel<T = any> extends PrivateChannel<T> {
 
 // Aliases for backward compatibility (undocumented)
 export type EchoConfig = BroadcastClientConfig
-export const Echo = BroadcastClient
+export const Echo: typeof BroadcastClient = BroadcastClient
 
 export default BroadcastClient

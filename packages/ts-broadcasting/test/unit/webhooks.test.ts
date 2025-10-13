@@ -4,21 +4,25 @@
  * Tests for webhook functionality including firing, retries, and HMAC signatures
  */
 
-import { describe, expect, it, beforeEach, mock } from 'bun:test'
+import { afterEach, beforeEach, describe, expect, it, mock } from 'bun:test'
 import { WebhookManager } from '../../src/webhooks'
 
 describe('WebhookManager', () => {
   let manager: WebhookManager
   let fetchMock: any
+  let originalFetch: typeof globalThis.fetch
 
   beforeEach(() => {
+    // Save original fetch
+    originalFetch = globalThis.fetch
+
     // Mock global fetch
     fetchMock = mock(() => Promise.resolve({
       ok: true,
       status: 200,
       json: async () => ({}),
     }))
-    global.fetch = fetchMock as any
+    globalThis.fetch = fetchMock as any
 
     manager = new WebhookManager({
       enabled: true,
@@ -32,6 +36,11 @@ describe('WebhookManager', () => {
       retryAttempts: 3,
       retryDelay: 100,
     })
+  })
+
+  afterEach(() => {
+    // Restore original fetch
+    globalThis.fetch = originalFetch
   })
 
   describe('Webhook Firing', () => {
@@ -148,7 +157,7 @@ describe('WebhookManager', () => {
           status: 200,
         })
       })
-      global.fetch = fetchMock as any
+      globalThis.fetch = fetchMock as any
 
       await manager.fire('connection', { socketId: 'test' })
 
@@ -161,7 +170,7 @@ describe('WebhookManager', () => {
         status: 500,
         statusText: 'Internal Server Error',
       }))
-      global.fetch = fetchMock as any
+      globalThis.fetch = fetchMock as any
 
       await manager.fire('connection', { socketId: 'test' })
 
@@ -178,7 +187,7 @@ describe('WebhookManager', () => {
           status: 500,
         })
       })
-      global.fetch = fetchMock as any
+      globalThis.fetch = fetchMock as any
 
       await manager.fire('connection', { socketId: 'test' })
 
@@ -197,7 +206,7 @@ describe('WebhookManager', () => {
         status: 404,
         statusText: 'Not Found',
       }))
-      global.fetch = fetchMock as any
+      globalThis.fetch = fetchMock as any
 
       await manager.fire('connection', { socketId: 'test' })
 
@@ -215,7 +224,7 @@ describe('WebhookManager', () => {
         signatures.push(payload.signature)
         return Promise.resolve({ ok: true, status: 200 })
       })
-      global.fetch = fetchMock as any
+      globalThis.fetch = fetchMock as any
 
       const eventData = { socketId: 'socket-123' }
 
@@ -252,7 +261,7 @@ describe('WebhookManager', () => {
   describe('Error Handling', () => {
     it('should handle network errors gracefully', async () => {
       fetchMock = mock(() => Promise.reject(new Error('Network error')))
-      global.fetch = fetchMock as any
+      globalThis.fetch = fetchMock as any
 
       // Should not throw - errors are handled internally
       await manager.fire('connection', { socketId: 'test' })
@@ -265,7 +274,7 @@ describe('WebhookManager', () => {
       fetchMock = mock(() => new Promise((resolve, reject) => {
         setTimeout(() => reject(new Error('Timeout')), 50)
       }))
-      global.fetch = fetchMock as any
+      globalThis.fetch = fetchMock as any
 
       // Should not throw - errors are handled internally
       await manager.fire('connection', { socketId: 'test' })
@@ -325,7 +334,7 @@ describe('WebhookManager', () => {
       const headers = call[1].headers
 
       expect(headers['X-Custom-Header']).toBe('custom-value')
-      expect(headers['Authorization']).toBe('Bearer token123')
+      expect(headers.Authorization).toBe('Bearer token123')
     })
   })
 
@@ -356,8 +365,7 @@ describe('WebhookManager', () => {
 
     it('should handle concurrent webhook fires', async () => {
       const promises = Array.from({ length: 10 }, (_, i) =>
-        manager.fire('connection', { socketId: `socket-${i}` }),
-      )
+        manager.fire('connection', { socketId: `socket-${i}` }))
 
       await Promise.all(promises)
 

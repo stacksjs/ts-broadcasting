@@ -1,4 +1,5 @@
 import type { BroadcastConfig } from './types'
+import process from 'node:process'
 import { loadConfig } from 'bunfig'
 
 export const defaultConfig: BroadcastConfig = {

@@ -43,7 +43,7 @@ export class MockRedisClient {
     return newValue
   }
 
-  async expire(key: string, seconds: number): Promise<void> {
+  async expire(_key: string, _seconds: number): Promise<void> {
     // In mock, we don't actually expire keys
     // You could implement this with setTimeout if needed
   }

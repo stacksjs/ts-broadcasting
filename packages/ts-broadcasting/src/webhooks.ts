@@ -4,6 +4,8 @@
  * Fire HTTP webhooks on specific events
  */
 
+import { Buffer } from 'node:buffer'
+
 export interface WebhookConfig {
   enabled?: boolean
   endpoints?: WebhookEndpoint[]
@@ -121,7 +123,7 @@ export class WebhookManager {
         return this.sendWebhook(endpoint, payload, attempt + 1)
       }
     }
-    catch (error) {
+    catch {
       if (attempt <= this.config.retryAttempts) {
         await new Promise(resolve => setTimeout(resolve, this.config.retryDelay * attempt))
         return this.sendWebhook(endpoint, payload, attempt + 1)

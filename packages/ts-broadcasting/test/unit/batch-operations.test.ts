@@ -4,11 +4,11 @@
  * Tests for batch subscribe, unsubscribe, and broadcast operations
  */
 
-import { describe, expect, it, beforeEach } from 'bun:test'
-import { BatchOperationsManager } from '../../src/batch-operations'
-import { ChannelManager } from '../../src/channels'
 import type { ServerWebSocket } from 'bun'
 import type { WebSocketData } from '../../src/types'
+import { beforeEach, describe, expect, it } from 'bun:test'
+import { BatchOperationsManager } from '../../src/batch-operations'
+import { ChannelManager } from '../../src/channels'
 
 describe('BatchOperationsManager', () => {
   let batchManager: BatchOperationsManager

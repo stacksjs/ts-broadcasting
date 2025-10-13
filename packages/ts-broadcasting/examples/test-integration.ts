@@ -5,7 +5,9 @@
  * Run with: bun run examples/test-integration.ts
  */
 
-import { BroadcastServer, Broadcaster, config } from '../src'
+/* eslint-disable no-console */
+import process from 'node:process'
+import { Broadcaster, BroadcastServer, config } from '../src'
 
 async function runIntegrationTest() {
   console.log('🚀 Starting Broadcasting Integration Test\n')
@@ -18,7 +20,7 @@ async function runIntegrationTest() {
   })
 
   // Setup channel authorizations
-  server.channels.channel('private-test.{id}', (ws) => {
+  server.channels.channel('private-test.{id}', (_ws) => {
     console.log(`   ✓ Authorizing private-test channel`)
     return true // Allow all for testing
   })

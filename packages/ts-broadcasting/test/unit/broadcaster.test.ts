@@ -4,10 +4,10 @@
  * Tests for event broadcasting and fluent interface
  */
 
-import { describe, expect, it, beforeEach, mock } from 'bun:test'
-import { Broadcaster, AnonymousEvent } from '../../src/broadcaster'
 import type { BroadcastServer } from '../../src/server'
 import type { BroadcastConfig } from '../../src/types'
+import { beforeEach, describe, expect, it, mock } from 'bun:test'
+import { AnonymousEvent, Broadcaster } from '../../src/broadcaster'
 
 describe('Broadcaster', () => {
   let broadcaster: Broadcaster

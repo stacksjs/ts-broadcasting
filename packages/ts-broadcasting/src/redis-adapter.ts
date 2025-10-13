@@ -6,6 +6,7 @@
  */
 
 import { RedisClient } from 'bun'
+import process from 'node:process'
 
 export interface RedisConfig {
   host?: string
@@ -38,7 +39,7 @@ export class RedisAdapter {
     this.config = {
       host: config.host || process.env.REDIS_HOST || 'localhost',
       port: config.port || Number.parseInt(process.env.REDIS_PORT || '6379'),
-      password: config.password || process.env.REDIS_PASSWORD,
+      password: config.password || process.env.REDIS_PASSWORD || '',
       database: config.database || Number.parseInt(process.env.REDIS_DB || '0'),
       url: config.url || process.env.REDIS_URL || '',
       keyPrefix: config.keyPrefix || 'broadcasting:',
@@ -199,8 +200,8 @@ export class RedisAdapter {
       try {
         members.set(socketId, JSON.parse(memberData))
       }
-      catch (error) {
-        console.error(`Error parsing presence member data for ${socketId}:`, error)
+      catch {
+        console.error(`Error parsing presence member data for ${socketId}`)
       }
     }
 
@@ -262,8 +263,8 @@ export class RedisAdapter {
     try {
       return JSON.parse(data)
     }
-    catch (error) {
-      console.error(`Error parsing connection data for ${socketId}:`, error)
+    catch {
+      console.error(`Error parsing connection data for ${socketId}`)
       return null
     }
   }
@@ -292,7 +293,7 @@ export class RedisAdapter {
       await this.publisher.send('PING', [])
       return true
     }
-    catch (error) {
+    catch {
       return false
     }
   }

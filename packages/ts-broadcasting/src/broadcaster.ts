@@ -1,10 +1,10 @@
+import type { BroadcastServer } from './server'
 import type {
   BroadcastConfig,
   BroadcastEvent,
   BroadcastMessage,
   QueueConfig,
 } from './types'
-import type { BroadcastServer } from './server'
 
 export class Broadcaster {
   private server: BroadcastServer
@@ -103,7 +103,7 @@ export class Broadcaster {
     // In production, you'd integrate with BullMQ, or similar
 
     if (this.config.verbose) {
-      console.log(`Queueing broadcast to queue: ${queueName || this.queue?.queue || 'default'}`)
+      console.warn(`Queueing broadcast to queue: ${queueName || this.queue?.queue || 'default'}`)
     }
 
     // TODO: Integrate with queue system
@@ -193,7 +193,7 @@ export class AnonymousEvent {
   /**
    * Exclude a socket from receiving the broadcast
    */
-  toOthers(socketId: string): this {
+  toOthers(socketId: string): AnonymousEvent {
     // Create new instance with excludeSocketId set
     const newEvent = new AnonymousEvent(this.channels)
     newEvent.eventName = this.eventName

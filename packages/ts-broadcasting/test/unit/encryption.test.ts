@@ -4,7 +4,7 @@
  * Tests for end-to-end encryption functionality
  */
 
-import { describe, expect, it, beforeEach } from 'bun:test'
+import { beforeEach, describe, expect, it } from 'bun:test'
 import { EncryptionManager } from '../../src/encryption'
 
 describe('EncryptionManager', () => {
@@ -13,7 +13,7 @@ describe('EncryptionManager', () => {
   beforeEach(() => {
     manager = new EncryptionManager({
       enabled: true,
-      algorithm: 'AES-GCM',
+      algorithm: 'aes-256-gcm',
     })
   })
 
@@ -160,7 +160,7 @@ describe('EncryptionManager', () => {
       const encrypted = await manager.encrypt('secure-channel', data)
 
       // Tamper with encrypted data
-      const tamperedData = encrypted.slice(0, -5) + 'XXXXX'
+      const tamperedData = `${encrypted.slice(0, -5)}XXXXX`
 
       await expect(
         manager.decrypt('secure-channel', tamperedData),

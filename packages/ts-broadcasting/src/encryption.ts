@@ -4,6 +4,8 @@
  * End-to-end encryption for sensitive channel data
  */
 
+import { Buffer } from 'node:buffer'
+
 export interface EncryptionConfig {
   enabled?: boolean
   algorithm?: 'aes-256-gcm' | 'aes-128-gcm'

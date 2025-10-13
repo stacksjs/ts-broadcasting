@@ -4,7 +4,7 @@
  * Tests for load management, backpressure, and load shedding
  */
 
-import { describe, expect, it, beforeEach } from 'bun:test'
+import { beforeEach, describe, expect, it } from 'bun:test'
 import { LoadManager } from '../../src/load-management'
 
 describe('LoadManager', () => {
@@ -296,10 +296,11 @@ describe('LoadManager', () => {
     })
 
     it('should handle concurrent operations', () => {
-      const promises = Array.from({ length: 100 }, (_, i) => {
+      Array.from({ length: 100 }, (_, i) => {
         manager.registerConnection(`socket-${i}`)
         manager.registerSubscription(`socket-${i}`)
         manager.registerSubscription(`socket-${i}`)
+        return undefined
       })
 
       const stats = manager.getStats()
