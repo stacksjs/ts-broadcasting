@@ -33,6 +33,15 @@ import {
   type RateLimitConfig,
   type SecurityConfig,
 } from './middleware'
+import { EncryptionManager, type EncryptionConfig } from './encryption'
+import { WebhookManager, type WebhookConfig } from './webhooks'
+import { PersistenceManager, type PersistenceConfig } from './persistence'
+import { ChannelStateManager, ChannelNamespaceManager } from './channel-state'
+import { PresenceHeartbeatManager, type HeartbeatConfig } from './presence-heartbeat'
+import { AcknowledgmentManager, type AckConfig } from './acknowledgments'
+import { BatchOperationsManager, type BatchConfig } from './batch-operations'
+import { ChannelLifecycleManager } from './lifecycle-hooks'
+import { LoadManager, type LoadConfig } from './load-management'
 
 export interface ServerConfig extends BroadcastConfig {
   redis?: RedisConfig
@@ -40,6 +49,14 @@ export interface ServerConfig extends BroadcastConfig {
   rateLimit?: RateLimitConfig
   security?: SecurityConfig
   debug?: boolean
+  // New advanced features
+  encryption?: EncryptionConfig
+  webhooks?: WebhookConfig
+  persistence?: PersistenceConfig
+  heartbeat?: HeartbeatConfig
+  acknowledgments?: AckConfig
+  batch?: BatchConfig
+  loadManagement?: LoadConfig
 }
 
 export class BroadcastServer {
@@ -59,6 +76,18 @@ export class BroadcastServer {
   public monitoring?: MonitoringManager
   public validator?: MessageValidationManager
   public security?: SecurityManager
+
+  // New advanced features
+  public encryption?: EncryptionManager
+  public webhooks?: WebhookManager
+  public persistence?: PersistenceManager
+  public channelState?: ChannelStateManager
+  public namespace?: ChannelNamespaceManager
+  public presenceHeartbeat?: PresenceHeartbeatManager
+  public acknowledgments?: AcknowledgmentManager
+  public batchOps?: BatchOperationsManager
+  public lifecycle?: ChannelLifecycleManager
+  public loadManager?: LoadManager
 
   constructor(config: ServerConfig) {
     this.config = config
@@ -83,6 +112,53 @@ export class BroadcastServer {
     this.monitoring = new MonitoringManager()
     this.validator = new MessageValidationManager()
 
+    // Initialize new advanced features
+    if (config.encryption) {
+      this.encryption = new EncryptionManager(config.encryption)
+    }
+
+    if (config.webhooks) {
+      this.webhooks = new WebhookManager(config.webhooks)
+    }
+
+    if (config.persistence) {
+      this.persistence = new PersistenceManager(config.persistence)
+    }
+
+    // Always initialize state and namespace managers (lightweight)
+    this.channelState = new ChannelStateManager()
+    this.namespace = new ChannelNamespaceManager()
+
+    if (config.heartbeat) {
+      this.presenceHeartbeat = new PresenceHeartbeatManager(config.heartbeat)
+    }
+
+    if (config.acknowledgments) {
+      this.acknowledgments = new AcknowledgmentManager(config.acknowledgments)
+    }
+
+    if (config.batch) {
+      this.batchOps = new BatchOperationsManager(config.batch, this.channels)
+    }
+
+    // Always initialize lifecycle hooks
+    this.lifecycle = new ChannelLifecycleManager()
+
+    if (config.loadManagement) {
+      this.loadManager = new LoadManager(config.loadManagement)
+    }
+
+    // Setup presence heartbeat removal callback
+    if (this.presenceHeartbeat) {
+      this.presenceHeartbeat.onUserRemove((channel, socketId, user) => {
+        // Remove member from presence channel
+        this.broadcast(channel, 'member_removed', { id: socketId, user }, socketId)
+        if (this.config.verbose) {
+          console.log(`Removed inactive user ${socketId} from ${channel}`)
+        }
+      })
+    }
+
     // Setup default validators
     this.setupDefaultValidators()
   }
@@ -91,6 +167,14 @@ export class BroadcastServer {
    * Start the WebSocket server
    */
   async start(): Promise<void> {
+    // Start presence heartbeat monitoring
+    if (this.presenceHeartbeat) {
+      this.presenceHeartbeat.start()
+      if (this.config.verbose) {
+        console.log('Started presence heartbeat monitoring')
+      }
+    }
+
     // Connect to Redis if configured
     if (this.config.redis) {
       this.redis = new RedisAdapter(this.config.redis)
@@ -219,6 +303,16 @@ export class BroadcastServer {
       this.rateLimit.stop()
     }
 
+    // Stop presence heartbeat
+    if (this.presenceHeartbeat) {
+      this.presenceHeartbeat.stop()
+    }
+
+    // Clear pending acknowledgments
+    if (this.acknowledgments) {
+      this.acknowledgments.clear()
+    }
+
     // Disconnect from Redis
     if (this.redis) {
       this.redis.close()
@@ -246,6 +340,23 @@ export class BroadcastServer {
    * Handle WebSocket connection open
    */
   private handleOpen(ws: ServerWebSocket<WebSocketData>): void {
+    // Check load limits
+    if (this.loadManager && !this.loadManager.canAcceptConnection()) {
+      ws.close(1008, 'Server at capacity')
+      return
+    }
+
+    // Check if should shed load
+    if (this.loadManager?.shouldShedLoad()) {
+      ws.close(1008, 'Server load too high')
+      return
+    }
+
+    // Register connection with load manager
+    if (this.loadManager) {
+      this.loadManager.registerConnection(ws.data.socketId)
+    }
+
     this.connections.set(ws.data.socketId, ws)
 
     // Store in Redis if configured
@@ -255,6 +366,15 @@ export class BroadcastServer {
         channels: Array.from(ws.data.channels),
         user: ws.data.user,
       }).catch(error => console.error('Redis store connection error:', error))
+    }
+
+    // Fire webhook
+    if (this.webhooks) {
+      this.webhooks.fire('connection', {
+        socketId: ws.data.socketId,
+        connectedAt: ws.data.connectedAt,
+        user: ws.data.user,
+      }).catch(error => console.error('Webhook error:', error))
     }
 
     // Send connection established message
@@ -347,11 +467,33 @@ export class BroadcastServer {
           await this.handleUnsubscribe(ws, sanitized as UnsubscribeMessage)
           break
 
+        case 'batch_subscribe':
+          await this.handleBatchSubscribe(ws, sanitized)
+          break
+
+        case 'batch_unsubscribe':
+          await this.handleBatchUnsubscribe(ws, sanitized)
+          break
+
+        case 'heartbeat':
+        case 'presence_heartbeat':
+          await this.handleHeartbeat(ws, sanitized)
+          break
+
         case 'ping':
           this.send(ws, { event: 'pong' })
           break
 
         default:
+          // Handle acknowledgment
+          if (this.acknowledgments && sanitized.ack && sanitized.messageId) {
+            // Send acknowledgment
+            this.send(ws, {
+              event: 'ack',
+              messageId: sanitized.messageId,
+            })
+          }
+
           // Client events (whisper)
           if (sanitized.event.startsWith('client-')) {
             await this.handleClientEvent(ws, sanitized as ClientEventMessage)
@@ -380,6 +522,20 @@ export class BroadcastServer {
     const { channel, channel_data } = message
 
     try {
+      // Check if can subscribe (load management)
+      if (this.loadManager && !this.loadManager.canSubscribe(ws.data.socketId)) {
+        this.send(ws, {
+          event: 'subscription_error',
+          channel,
+          data: {
+            type: 'CapacityError',
+            error: 'Subscription limit reached',
+            status: 429,
+          },
+        })
+        return
+      }
+
       const result = await this.channels.subscribe(ws, channel, channel_data)
 
       if (!result) {
@@ -396,6 +552,11 @@ export class BroadcastServer {
         return
       }
 
+      // Register subscription with load manager
+      if (this.loadManager) {
+        this.loadManager.registerSubscription(ws.data.socketId)
+      }
+
       // Store in Redis if configured
       if (this.redis) {
         await this.redis.storeChannel(channel, ws.data.socketId)
@@ -409,7 +570,21 @@ export class BroadcastServer {
       // Subscription succeeded
       const channelType = this.channels.getChannelType(channel)
 
+      // Fire lifecycle hook - channel created/subscribed
+      if (this.lifecycle) {
+        const isNewChannel = this.channels.getSubscriberCount(channel) === 1
+        if (isNewChannel) {
+          await this.lifecycle.channelCreated(channel, ws.data.socketId)
+        }
+        await this.lifecycle.channelSubscribed(channel, ws.data.socketId, this.channels.getSubscriberCount(channel))
+      }
+
       if (channelType === 'presence') {
+        // Register presence heartbeat
+        if (this.presenceHeartbeat && typeof result === 'object') {
+          this.presenceHeartbeat.heartbeat(channel, ws.data.socketId, result)
+        }
+
         // Send presence data
         const members = this.channels.getPresenceMembers(channel)
         const presenceData: PresenceChannelData = {
@@ -441,6 +616,15 @@ export class BroadcastServer {
           event: 'subscription_succeeded',
           channel,
         })
+      }
+
+      // Fire webhook
+      if (this.webhooks) {
+        this.webhooks.fire('subscribe', {
+          socketId: ws.data.socketId,
+          channel,
+          channelData: channel_data,
+        }).catch(error => console.error('Webhook error:', error))
       }
 
       // Emit subscribe metric
@@ -533,6 +717,11 @@ export class BroadcastServer {
     // Unsubscribe from all channels
     this.channels.unsubscribeAll(ws)
 
+    // Unregister from load manager
+    if (this.loadManager) {
+      this.loadManager.unregisterConnection(ws.data.socketId)
+    }
+
     // Remove connection
     this.connections.delete(ws.data.socketId)
 
@@ -541,6 +730,15 @@ export class BroadcastServer {
       this.redis.removeConnection(ws.data.socketId).catch(error =>
         console.error('Redis remove connection error:', error),
       )
+    }
+
+    // Fire webhook
+    if (this.webhooks) {
+      this.webhooks.fire('disconnection', {
+        socketId: ws.data.socketId,
+        code,
+        reason,
+      }).catch(error => console.error('Webhook error:', error))
     }
 
     // Emit disconnection metric
@@ -678,6 +876,93 @@ export class BroadcastServer {
     return {
       ...baseStats,
       metrics: this.monitoring?.getMetrics() || {},
+    }
+  }
+
+  /**
+   * Handle batch subscribe
+   */
+  private async handleBatchSubscribe(ws: ServerWebSocket<WebSocketData>, message: any): Promise<void> {
+    if (!this.batchOps) {
+      this.send(ws, {
+        event: 'error',
+        data: {
+          type: 'NotSupported',
+          error: 'Batch operations are not enabled',
+        },
+      })
+      return
+    }
+
+    try {
+      const result = await this.batchOps.batchSubscribe(ws, {
+        channels: message.channels,
+        channelData: message.channelData,
+      })
+
+      this.send(ws, {
+        event: 'batch_subscribe_result',
+        messageId: message.messageId,
+        data: result,
+      })
+    }
+    catch (error) {
+      this.send(ws, {
+        event: 'error',
+        data: {
+          type: 'BatchError',
+          error: error instanceof Error ? error.message : 'Batch subscribe failed',
+        },
+      })
+    }
+  }
+
+  /**
+   * Handle batch unsubscribe
+   */
+  private handleBatchUnsubscribe(ws: ServerWebSocket<WebSocketData>, message: any): void {
+    if (!this.batchOps) {
+      this.send(ws, {
+        event: 'error',
+        data: {
+          type: 'NotSupported',
+          error: 'Batch operations are not enabled',
+        },
+      })
+      return
+    }
+
+    try {
+      const result = this.batchOps.batchUnsubscribe(ws, message.channels)
+
+      this.send(ws, {
+        event: 'batch_unsubscribe_result',
+        messageId: message.messageId,
+        data: result,
+      })
+    }
+    catch (error) {
+      this.send(ws, {
+        event: 'error',
+        data: {
+          type: 'BatchError',
+          error: error instanceof Error ? error.message : 'Batch unsubscribe failed',
+        },
+      })
+    }
+  }
+
+  /**
+   * Handle heartbeat (presence channels)
+   */
+  private async handleHeartbeat(ws: ServerWebSocket<WebSocketData>, message: any): Promise<void> {
+    if (!this.presenceHeartbeat) {
+      return
+    }
+
+    // Update heartbeat for presence channel
+    if (message.channel) {
+      this.presenceHeartbeat.heartbeat(message.channel, ws.data.socketId)
     }
   }
 

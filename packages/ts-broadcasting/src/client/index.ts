@@ -21,6 +21,27 @@ export interface EchoConfig {
   reconnect?: boolean
   reconnectDelay?: number
   maxReconnectAttempts?: number
+  // New features
+  encryption?: {
+    enabled?: boolean
+    keys?: Record<string, string> // channel -> key
+  }
+  acknowledgments?: {
+    enabled?: boolean
+    timeout?: number
+  }
+  batch?: {
+    enabled?: boolean
+    maxBatchSize?: number
+  }
+  heartbeat?: {
+    enabled?: boolean
+    interval?: number // Send heartbeat interval in ms
+  }
+  offlineQueue?: {
+    enabled?: boolean
+    maxSize?: number
+  }
 }
 
 export type EventCallback<T = any> = (data: T) => void
@@ -38,6 +59,13 @@ export interface PresenceChannelCallbacks extends ChannelCallbacks {
   error?: (error: any) => void
 }
 
+export interface PendingAcknowledgment {
+  messageId: string
+  resolve: (value: boolean) => void
+  reject: (reason: Error) => void
+  timeout: Timer
+}
+
 export class Echo {
   private ws: WebSocket | null = null
   private config: Required<EchoConfig>
@@ -45,7 +73,10 @@ export class Echo {
   private socketId: string | null = null
   private reconnectAttempts = 0
   private reconnectTimer: Timer | null = null
-  private messageQueue: string[] = []
+  private messageQueue: Array<{ message: string, ack?: boolean, messageId?: string }> = []
+  private heartbeatTimer: Timer | null = null
+  private pendingAcks: Map<string, PendingAcknowledgment> = new Map()
+  private encryptionKeys: Map<string, string> = new Map()
 
   constructor(config: EchoConfig) {
     this.config = {
@@ -61,6 +92,33 @@ export class Echo {
       reconnect: config.reconnect ?? true,
       reconnectDelay: config.reconnectDelay || 1000,
       maxReconnectAttempts: config.maxReconnectAttempts || 10,
+      encryption: {
+        enabled: config.encryption?.enabled ?? false,
+        keys: config.encryption?.keys || {},
+      },
+      acknowledgments: {
+        enabled: config.acknowledgments?.enabled ?? false,
+        timeout: config.acknowledgments?.timeout || 5000,
+      },
+      batch: {
+        enabled: config.batch?.enabled ?? true,
+        maxBatchSize: config.batch?.maxBatchSize || 50,
+      },
+      heartbeat: {
+        enabled: config.heartbeat?.enabled ?? false,
+        interval: config.heartbeat?.interval || 30000,
+      },
+      offlineQueue: {
+        enabled: config.offlineQueue?.enabled ?? true,
+        maxSize: config.offlineQueue?.maxSize || 100,
+      },
+    }
+
+    // Set encryption keys
+    if (this.config.encryption.enabled && this.config.encryption.keys) {
+      for (const [channel, key] of Object.entries(this.config.encryption.keys)) {
+        this.encryptionKeys.set(channel, key)
+      }
     }
 
     if (this.config.autoConnect) {
@@ -81,11 +139,22 @@ export class Echo {
 
     this.ws.onopen = () => {
       this.reconnectAttempts = 0
+
+      // Start heartbeat if enabled
+      if (this.config.heartbeat.enabled) {
+        this.startHeartbeat()
+      }
+
       // Flush message queue
       while (this.messageQueue.length > 0) {
-        const message = this.messageQueue.shift()
-        if (message) {
-          this.ws?.send(message)
+        const item = this.messageQueue.shift()
+        if (item) {
+          this.ws?.send(item.message)
+
+          // Re-register acknowledgment if needed
+          if (item.ack && item.messageId) {
+            this.waitForAck(item.messageId)
+          }
         }
       }
     }
@@ -96,6 +165,8 @@ export class Echo {
 
     this.ws.onclose = () => {
       this.socketId = null
+      this.stopHeartbeat()
+
       if (this.config.reconnect && this.reconnectAttempts < this.config.maxReconnectAttempts) {
         this.reconnectAttempts++
         const delay = Math.min(this.config.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1), 30000)
@@ -116,6 +187,15 @@ export class Echo {
       clearTimeout(this.reconnectTimer)
       this.reconnectTimer = null
     }
+
+    this.stopHeartbeat()
+
+    // Clear pending acknowledgments
+    for (const pending of this.pendingAcks.values()) {
+      clearTimeout(pending.timeout)
+      pending.reject(new Error('Connection closed'))
+    }
+    this.pendingAcks.clear()
 
     if (this.ws) {
       this.ws.close()
@@ -191,10 +271,207 @@ export class Echo {
   }
 
   /**
+   * Batch subscribe to multiple channels
+   */
+  async batchSubscribe(
+    channelNames: string[],
+    channelData?: Record<string, unknown>,
+  ): Promise<{ succeeded: string[], failed: Record<string, string> }> {
+    if (!this.config.batch.enabled) {
+      throw new Error('Batch operations are disabled')
+    }
+
+    if (channelNames.length > this.config.batch.maxBatchSize) {
+      throw new Error(`Batch size exceeds maximum: ${channelNames.length} > ${this.config.batch.maxBatchSize}`)
+    }
+
+    return new Promise((resolve, reject) => {
+      const messageId = crypto.randomUUID()
+
+      this.send({
+        event: 'batch_subscribe',
+        channels: channelNames,
+        channelData,
+        messageId,
+      })
+
+      // Wait for response
+      const timeout = setTimeout(() => {
+        reject(new Error('Batch subscribe timeout'))
+      }, 10000)
+
+      const handler = (event: string, data: any) => {
+        if (event === 'batch_subscribe_result' && data.messageId === messageId) {
+          clearTimeout(timeout)
+          resolve(data)
+        }
+      }
+
+      // Temporarily listen for result
+      this.listen('batch_subscribe_result', handler)
+    })
+  }
+
+  /**
+   * Batch unsubscribe from multiple channels
+   */
+  async batchUnsubscribe(
+    channelNames: string[],
+  ): Promise<{ succeeded: string[], failed: Record<string, string> }> {
+    if (!this.config.batch.enabled) {
+      throw new Error('Batch operations are disabled')
+    }
+
+    if (channelNames.length > this.config.batch.maxBatchSize) {
+      throw new Error(`Batch size exceeds maximum: ${channelNames.length} > ${this.config.batch.maxBatchSize}`)
+    }
+
+    return new Promise((resolve, reject) => {
+      const messageId = crypto.randomUUID()
+
+      this.send({
+        event: 'batch_unsubscribe',
+        channels: channelNames,
+        messageId,
+      })
+
+      // Wait for response
+      const timeout = setTimeout(() => {
+        reject(new Error('Batch unsubscribe timeout'))
+      }, 10000)
+
+      const handler = (event: string, data: any) => {
+        if (event === 'batch_unsubscribe_result' && data.messageId === messageId) {
+          clearTimeout(timeout)
+          resolve(data)
+        }
+      }
+
+      // Temporarily listen for result
+      this.listen('batch_unsubscribe_result', handler)
+    })
+  }
+
+  /**
    * Get the socket ID
    */
   getSocketId(): string | null {
     return this.socketId
+  }
+
+  /**
+   * Set encryption key for a channel
+   */
+  setEncryptionKey(channel: string, key: string): void {
+    this.encryptionKeys.set(channel, key)
+  }
+
+  /**
+   * Get encryption key for a channel
+   */
+  getEncryptionKey(channel: string): string | undefined {
+    return this.encryptionKeys.get(channel)
+  }
+
+  /**
+   * Send a message with optional acknowledgment
+   */
+  async sendWithAck(message: object, requireAck = false): Promise<boolean> {
+    if (!requireAck || !this.config.acknowledgments.enabled) {
+      this.send(message)
+      return Promise.resolve(true)
+    }
+
+    const messageId = crypto.randomUUID()
+    const messageWithId = { ...message, messageId, ack: true }
+
+    return new Promise((resolve, reject) => {
+      this.send(messageWithId)
+
+      // Wait for acknowledgment
+      this.waitForAck(messageId).then(resolve).catch(reject)
+    })
+  }
+
+  /**
+   * Wait for message acknowledgment
+   */
+  private waitForAck(messageId: string): Promise<boolean> {
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        this.pendingAcks.delete(messageId)
+        reject(new Error(`Acknowledgment timeout for message ${messageId}`))
+      }, this.config.acknowledgments.timeout)
+
+      this.pendingAcks.set(messageId, {
+        messageId,
+        resolve,
+        reject,
+        timeout,
+      })
+    })
+  }
+
+  /**
+   * Handle acknowledgment from server
+   */
+  private handleAck(messageId: string): void {
+    const pending = this.pendingAcks.get(messageId)
+    if (pending) {
+      clearTimeout(pending.timeout)
+      pending.resolve(true)
+      this.pendingAcks.delete(messageId)
+    }
+  }
+
+  /**
+   * Start heartbeat timer
+   */
+  private startHeartbeat(): void {
+    if (this.heartbeatTimer) {
+      return
+    }
+
+    this.heartbeatTimer = setInterval(() => {
+      this.send({
+        event: 'heartbeat',
+        timestamp: Date.now(),
+      })
+    }, this.config.heartbeat.interval)
+  }
+
+  /**
+   * Stop heartbeat timer
+   */
+  private stopHeartbeat(): void {
+    if (this.heartbeatTimer) {
+      clearInterval(this.heartbeatTimer)
+      this.heartbeatTimer = null
+    }
+  }
+
+  /**
+   * Listen for global events
+   */
+  private globalCallbacks: Map<string, Set<EventCallback>> = new Map()
+
+  listen(event: string, callback: EventCallback): void {
+    if (!this.globalCallbacks.has(event)) {
+      this.globalCallbacks.set(event, new Set())
+    }
+    this.globalCallbacks.get(event)!.add(callback)
+  }
+
+  /**
+   * Stop listening for global events
+   */
+  stopListening(event: string, callback?: EventCallback): void {
+    if (!callback) {
+      this.globalCallbacks.delete(event)
+    }
+    else {
+      this.globalCallbacks.get(event)?.delete(callback)
+    }
   }
 
   /**
@@ -206,9 +483,14 @@ export class Echo {
     if (this.ws?.readyState === WebSocket.OPEN) {
       this.ws.send(data)
     }
-    else {
+    else if (this.config.offlineQueue.enabled) {
       // Queue message for later
-      this.messageQueue.push(data)
+      if (this.messageQueue.length < this.config.offlineQueue.maxSize) {
+        this.messageQueue.push({ message: data })
+      }
+      else {
+        console.warn('Message queue is full, dropping message')
+      }
     }
   }
 
@@ -223,6 +505,20 @@ export class Echo {
       if (message.event === 'connection_established') {
         this.socketId = message.data.socket_id
         return
+      }
+
+      // Handle acknowledgment
+      if (message.event === 'ack' && message.messageId) {
+        this.handleAck(message.messageId)
+        return
+      }
+
+      // Handle global events (batch results, etc.)
+      const globalCallbacks = this.globalCallbacks.get(message.event)
+      if (globalCallbacks) {
+        for (const callback of globalCallbacks) {
+          callback(message.data)
+        }
       }
 
       // Route message to appropriate channel
@@ -384,6 +680,47 @@ export class PrivateChannel<T = any> extends PublicChannel<T> {
  */
 export class PresenceChannel<T = any> extends PrivateChannel<T> {
   private members: Map<string, any> = new Map()
+  private presenceHeartbeatTimer: Timer | null = null
+
+  /**
+   * Subscribe to the channel and start presence heartbeat
+   */
+  override subscribe(): void {
+    super.subscribe()
+    this.startPresenceHeartbeat()
+  }
+
+  /**
+   * Unsubscribe from the channel and stop presence heartbeat
+   */
+  override unsubscribe(): void {
+    this.stopPresenceHeartbeat()
+    super.unsubscribe()
+  }
+
+  /**
+   * Start presence heartbeat
+   */
+  private startPresenceHeartbeat(): void {
+    // Send heartbeat every 30 seconds to stay active
+    this.presenceHeartbeatTimer = setInterval(() => {
+      this.echo.send({
+        event: 'presence_heartbeat',
+        channel: this.name,
+        timestamp: Date.now(),
+      })
+    }, 30000)
+  }
+
+  /**
+   * Stop presence heartbeat
+   */
+  private stopPresenceHeartbeat(): void {
+    if (this.presenceHeartbeatTimer) {
+      clearInterval(this.presenceHeartbeatTimer)
+      this.presenceHeartbeatTimer = null
+    }
+  }
 
   /**
    * Handle subscription success with presence data
