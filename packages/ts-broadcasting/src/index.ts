@@ -34,6 +34,18 @@ export {
 } from './middleware'
 export * from './persistence'
 export * from './presence-heartbeat'
+// Queue system
+export * from './queue-manager'
+export { BroadcastQueueManager, BroadcastJob, DelayedBroadcastJob, RecurringBroadcastJob } from './queue-manager'
+// Metrics
+export * from './metrics/prometheus'
+export { PrometheusExporter } from './metrics/prometheus'
+// Circuit Breaker
+export * from './circuit-breaker'
+export { CircuitBreaker, CircuitBreakerManager, CircuitBreakerError } from './circuit-breaker'
+// Message Deduplication
+export * from './message-deduplication'
+export { MessageDeduplicator } from './message-deduplication'
 // Additional features
 export * from './redis-adapter'
 export { RedisAdapter } from './redis-adapter'

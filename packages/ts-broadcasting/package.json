@@ -12,10 +12,10 @@
     "laravel",
     "echo"
   ],
-  "main": "dist/index.js",
+  "main": "dist/src/index.js",
   "types": "dist/index.d.ts",
   "bin": {
-    "broadcast": "./bin/broadcast"
+    "broadcast": "./dist/bin/cli.js"
   },
   "files": [
     "bin",

@@ -1,0 +1,88 @@
+# Docker Compose configuration for ts-broadcasting
+version: '3.8'
+
+services:
+  # Broadcasting Server
+  broadcasting:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - '6001:6001' # WebSocket port
+    environment:
+      - NODE_ENV=production
+      - BROADCAST_HOST=0.0.0.0
+      - BROADCAST_PORT=6001
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - VERBOSE=true
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - broadcasting-network
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:6001/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Redis for horizontal scaling and queue
+  redis:
+    image: redis:7-alpine
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    restart: unless-stopped
+    networks:
+      - broadcasting-network
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  # Prometheus for metrics
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - '9090:9090'
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    restart: unless-stopped
+    networks:
+      - broadcasting-network
+
+  # Grafana for visualization
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - '3000:3000'
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana-data:/var/lib/grafana
+    restart: unless-stopped
+    networks:
+      - broadcasting-network
+    depends_on:
+      - prometheus
+
+networks:
+  broadcasting-network:
+    driver: bridge
+
+volumes:
+  redis-data:
+  prometheus-data:
+  grafana-data:

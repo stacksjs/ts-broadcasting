@@ -14,7 +14,11 @@
     "url": "https://github.com/stacksjs/ts-broadcasting/issues"
   },
   "keywords": [
-    "ts-broadcasting"
+    "ts-broadcasting",
+    "typescript",
+    "realtime",
+    "websockets",
+    "laravel-echo"
   ],
   "scripts": {
     "fresh": "bunx rimraf node_modules/ bun.lock && bun i",

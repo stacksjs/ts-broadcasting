@@ -68,6 +68,22 @@ export interface ServerConfig extends BroadcastConfig {
   acknowledgments?: AckConfig
   batch?: BatchConfig
   loadManagement?: LoadConfig
+  queue?: {
+    enabled?: boolean
+    connection?: string
+    defaultQueue?: string
+    retry?: {
+      attempts?: number
+      backoff?: {
+        type: 'fixed' | 'exponential'
+        delay: number
+      }
+    }
+    deadLetter?: {
+      enabled?: boolean
+      maxRetries?: number
+    }
+  }
 }
 
 export class BroadcastServer {
@@ -99,6 +115,7 @@ export class BroadcastServer {
   public batchOps?: BatchOperationsManager
   public lifecycle?: ChannelLifecycleManager
   public loadManager?: LoadManager
+  public queueManager?: any // Will be typed as BroadcastQueueManager
 
   constructor(config: ServerConfig) {
     this.config = config
@@ -159,6 +176,12 @@ export class BroadcastServer {
       this.loadManager = new LoadManager(config.loadManagement)
     }
 
+    // Initialize queue manager if configured
+    if (config.queue?.enabled) {
+      // Queue manager will be lazy-loaded on first use to avoid import issues
+      this.initializeQueueManager()
+    }
+
     // Setup presence heartbeat removal callback
     if (this.presenceHeartbeat) {
       this.presenceHeartbeat.onUserRemove((channel, socketId, user) => {
@@ -172,6 +195,22 @@ export class BroadcastServer {
 
     // Setup default validators
     this.setupDefaultValidators()
+  }
+
+  /**
+   * Initialize queue manager (lazy loaded)
+   */
+  private async initializeQueueManager(): Promise<void> {
+    try {
+      const { BroadcastQueueManager } = await import('./queue-manager')
+      this.queueManager = new BroadcastQueueManager(this, this.config.queue)
+      if (this.config.verbose) {
+        console.warn('Queue manager initialized')
+      }
+    }
+    catch (error) {
+      console.error('Failed to initialize queue manager:', error)
+    }
   }
 
   /**
@@ -231,6 +270,18 @@ export class BroadcastServer {
         // Stats endpoint
         if (url.pathname === '/stats') {
           return Response.json(await this.getStats())
+        }
+
+        // Prometheus metrics endpoint
+        if (url.pathname === '/metrics') {
+          const { PrometheusExporter } = await import('./metrics/prometheus')
+          const exporter = new PrometheusExporter(this)
+          const metrics = await exporter.export()
+          return new Response(metrics, {
+            headers: {
+              'Content-Type': 'text/plain; version=0.0.4',
+            },
+          })
         }
 
         // WebSocket upgrade
@@ -318,6 +369,11 @@ export class BroadcastServer {
     // Clear pending acknowledgments
     if (this.acknowledgments) {
       this.acknowledgments.clear()
+    }
+
+    // Close queue manager
+    if (this.queueManager) {
+      await this.queueManager.close()
     }
 
     // Disconnect from Redis
