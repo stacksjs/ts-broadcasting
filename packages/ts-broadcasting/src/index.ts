@@ -10,6 +10,16 @@ export * from './redis-adapter'
 export * from './middleware'
 export * from './helpers'
 
+export * from './encryption'
+export * from './webhooks'
+export * from './persistence'
+export * from './channel-state'
+export * from './presence-heartbeat'
+export * from './acknowledgments'
+export * from './batch-operations'
+export * from './lifecycle-hooks'
+export * from './load-management'
+
 // Client SDK
 export * from './client'
 

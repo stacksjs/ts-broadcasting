@@ -4,7 +4,7 @@
  * Tests for all middleware components
  */
 
-import { describe, expect, it, beforeEach, mock } from 'bun:test'
+import { describe, expect, it, beforeEach, afterEach, mock } from 'bun:test'
 import {
   AuthenticationManager,
   RateLimiter,
@@ -101,6 +101,10 @@ describe('RateLimiter', () => {
         connectedAt: Date.now(),
       },
     } as any
+  })
+
+  afterEach(() => {
+    rateLimiter.stop()
   })
 
   it('should allow requests within limit', () => {

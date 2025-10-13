@@ -178,12 +178,12 @@ export class PersistenceManager {
     const messages = this.inMemoryStore.get(channel) || []
 
     let filtered = messages
-    if (since) {
-      filtered = messages.filter(m => m.timestamp > since)
+    if (since !== undefined) {
+      filtered = messages.filter(m => m.timestamp >= since)
     }
 
     if (limit) {
-      filtered = filtered.slice(-limit)
+      filtered = filtered.slice(0, limit)
     }
 
     return filtered
@@ -199,31 +199,40 @@ export class PersistenceManager {
   /**
    * Get statistics about stored messages
    */
-  async getStats(): Promise<{ channels: number, totalMessages: number }> {
+  async getStats(): Promise<{ totalChannels: number, totalMessages: number, channels: Record<string, number> }> {
     if (this.redis) {
       // Get all history keys
       const keys = (await this.redis.send('KEYS', ['history:*'])) as string[]
       let totalMessages = 0
+      const channels: Record<string, number> = {}
 
       for (const key of keys) {
         const count = await this.redis.send('ZCARD', [key])
-        totalMessages += Number(count)
+        const channelName = key.replace('history:', '')
+        const messageCount = Number(count)
+        channels[channelName] = messageCount
+        totalMessages += messageCount
       }
 
       return {
-        channels: keys.length,
+        totalChannels: keys.length,
         totalMessages,
+        channels,
       }
     }
 
     let totalMessages = 0
-    for (const messages of this.inMemoryStore.values()) {
+    const channels: Record<string, number> = {}
+
+    for (const [channel, messages] of this.inMemoryStore.entries()) {
+      channels[channel] = messages.length
       totalMessages += messages.length
     }
 
     return {
-      channels: this.inMemoryStore.size,
+      totalChannels: this.inMemoryStore.size,
       totalMessages,
+      channels,
     }
   }
 }

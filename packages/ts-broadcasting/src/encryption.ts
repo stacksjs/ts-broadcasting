@@ -76,6 +76,10 @@ export class EncryptionManager {
    */
   async encrypt(channel: string, data: unknown): Promise<string> {
     if (!this.config.enabled) {
+      // Handle undefined specially since JSON.stringify(undefined) returns undefined (not a string)
+      if (data === undefined) {
+        return 'undefined'
+      }
       return JSON.stringify(data)
     }
 
@@ -84,7 +88,8 @@ export class EncryptionManager {
       throw new Error(`No encryption key found for channel: ${channel}`)
     }
 
-    const plaintext = JSON.stringify(data)
+    // Handle undefined specially since JSON.stringify(undefined) returns undefined (not a string)
+    const plaintext = data === undefined ? 'undefined' : JSON.stringify(data)
     const iv = crypto.getRandomValues(new Uint8Array(12))
 
     const encrypted = await crypto.subtle.encrypt(
@@ -106,6 +111,10 @@ export class EncryptionManager {
    */
   async decrypt(channel: string, encryptedData: string): Promise<unknown> {
     if (!this.config.enabled) {
+      // Handle undefined specially
+      if (encryptedData === 'undefined') {
+        return undefined
+      }
       return JSON.parse(encryptedData)
     }
 
@@ -125,6 +134,10 @@ export class EncryptionManager {
     )
 
     const plaintext = new TextDecoder().decode(decrypted)
+    // Handle undefined specially
+    if (plaintext === 'undefined') {
+      return undefined
+    }
     return JSON.parse(plaintext)
   }
 
@@ -140,6 +153,14 @@ export class EncryptionManager {
    */
   getChannelKey(channel: string): string | undefined {
     return this.channelKeys.get(channel)
+  }
+
+  /**
+   * Rotate encryption key for a channel
+   */
+  async rotateChannelKey(channel: string): Promise<string> {
+    // Generate a new key and replace the old one
+    return this.generateChannelKey(channel)
   }
 
   /**
