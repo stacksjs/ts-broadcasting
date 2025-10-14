@@ -189,6 +189,7 @@ export class CircuitBreaker {
       this.resetTimer = null
     }
 
+    // eslint-disable-next-line no-console
     console.log(`Circuit breaker CLOSED for ${this.name}`)
   }
 

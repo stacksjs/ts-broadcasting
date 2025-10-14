@@ -4,8 +4,8 @@
  * React hooks for easy integration with the broadcasting system
  */
 
-import type { EventCallback } from './index'
 import type React from 'react'
+import type { EventCallback } from './index'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { BroadcastClient } from './index'
 
@@ -79,6 +79,7 @@ export function useChannel<T = any>(
   eventHandlers?: Record<string, EventCallback<T>>,
 ) {
   const [isSubscribed, setIsSubscribed] = useState(false)
+  // eslint-disable-next-line unused-imports/no-unused-vars
   const [data, setData] = useState<T | null>(null)
   const channelRef = useRef<any>(null)
 

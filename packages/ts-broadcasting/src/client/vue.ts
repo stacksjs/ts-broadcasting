@@ -4,8 +4,8 @@
  * Vue 3 composables for easy integration with the broadcasting system
  */
 
-import type { EventCallback } from './index'
 import type { Ref } from 'vue'
+import type { EventCallback } from './index'
 import { onUnmounted, ref, watch } from 'vue'
 import { BroadcastClient } from './index'
 

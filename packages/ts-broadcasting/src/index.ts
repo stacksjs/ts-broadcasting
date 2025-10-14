@@ -6,10 +6,13 @@ export * from './channel-state'
 
 export * from './channels'
 export { ChannelManager } from './channels'
+// Circuit Breaker
+export * from './circuit-breaker'
+export { CircuitBreaker, CircuitBreakerError, CircuitBreakerManager } from './circuit-breaker'
+
 // Client SDK
 export * from './client'
 export type { PresenceChannel, PrivateChannel } from './client'
-
 // Client SDK - primary export
 export { default as BroadcastClient } from './client'
 export { BroadcastClient as Client } from './client' // Short alias
@@ -20,11 +23,17 @@ export * from './config'
 export * from './encryption'
 export * from './helpers'
 export { BroadcastHelpers, createHelpers } from './helpers'
+
 export * from './lifecycle-hooks'
+
 export * from './load-management'
-
+// Message Deduplication
+export * from './message-deduplication'
+export { MessageDeduplicator } from './message-deduplication'
+// Metrics
+export * from './metrics/prometheus'
+export { PrometheusExporter } from './metrics/prometheus'
 export * from './middleware'
-
 export {
   AuthenticationManager,
   MessageValidationManager,
@@ -36,16 +45,7 @@ export * from './persistence'
 export * from './presence-heartbeat'
 // Queue system
 export * from './queue-manager'
-export { BroadcastQueueManager, BroadcastJob, DelayedBroadcastJob, RecurringBroadcastJob } from './queue-manager'
-// Metrics
-export * from './metrics/prometheus'
-export { PrometheusExporter } from './metrics/prometheus'
-// Circuit Breaker
-export * from './circuit-breaker'
-export { CircuitBreaker, CircuitBreakerManager, CircuitBreakerError } from './circuit-breaker'
-// Message Deduplication
-export * from './message-deduplication'
-export { MessageDeduplicator } from './message-deduplication'
+export { BroadcastJob, BroadcastQueueManager, DelayedBroadcastJob, RecurringBroadcastJob } from './queue-manager'
 // Additional features
 export * from './redis-adapter'
 export { RedisAdapter } from './redis-adapter'

@@ -200,7 +200,7 @@ export class PrometheusExporter {
         this.metrics.queue_jobs_delayed = queueStats.delayed
       }
     }
-    catch (error) {
+    catch {
       // Queue metrics not available
     }
   }

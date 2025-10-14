@@ -4,10 +4,9 @@
  * Integrates bun-queue for reliable message delivery and background processing
  */
 
-import type { Job, JobContract, JobOptions, Queue, QueueConnection, QueueConnectionConfig } from 'bun-queue'
-import { DeadLetterQueue, getQueueManager, setQueueManager } from 'bun-queue'
+import type { DeadLetterQueue, Job, JobContract, Queue } from 'bun-queue'
 import type { BroadcastServer } from './server'
-import type { BroadcastConfig } from './types'
+import { getQueueManager } from 'bun-queue'
 
 export interface BroadcastQueueConfig {
   enabled?: boolean
@@ -164,6 +163,7 @@ export class BroadcastQueueManager {
       // Start processing jobs
       this.queue.processJobs(10) // Process with 10 concurrent workers
 
+      // eslint-disable-next-line no-console
       console.log(`✓ Broadcasting queue initialized: ${this.config.defaultQueue}`)
     }
     catch (error) {

@@ -181,7 +181,7 @@ if (!isDupe) {
 
 **Usage Example:**
 ```tsx
-import { BroadcastProvider, useChannel, useBroadcastContext } from 'ts-broadcasting/client/react'
+import { BroadcastProvider, useBroadcastContext, useChannel } from 'ts-broadcasting/client/react'
 
 function App() {
   return (
@@ -194,13 +194,19 @@ function App() {
 function ChatRoom() {
   const { client, isConnected } = useBroadcastContext()
   const { isSubscribed, members } = usePresence(client, 'chat.room1', {
-    'NewMessage': (data) => console.log('Message:', data)
+    NewMessage: data => console.log('Message:', data)
   })
 
   return (
     <div>
-      <p>Connected: {isConnected ? 'Yes' : 'No'}</p>
-      <p>Members online: {members.length}</p>
+      <p>
+        Connected:
+        {isConnected ? 'Yes' : 'No'}
+      </p>
+      <p>
+        Members online:
+        {members.length}
+      </p>
     </div>
   )
 }
@@ -233,7 +239,7 @@ const { client, isConnected } = useBroadcast({
 })
 
 const { members, isSubscribed, whisper } = usePresence(client, 'chat.room1', {
-  'NewMessage': (data) => console.log('Message:', data)
+  NewMessage: data => console.log('Message:', data)
 })
 </script>
 
