@@ -4,6 +4,8 @@
  * Fire HTTP webhooks on specific events
  */
 
+import { Buffer } from 'node:buffer'
+
 export interface WebhookConfig {
   enabled?: boolean
   endpoints?: WebhookEndpoint[]
@@ -104,6 +106,7 @@ export class WebhookManager {
         method: endpoint.method || 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'User-Agent': 'ts-broadcasting/1.0',
           'X-Webhook-Signature': payload.signature || '',
           ...endpoint.headers,
         },
@@ -113,18 +116,20 @@ export class WebhookManager {
 
       clearTimeout(timeoutId)
 
-      if (!response.ok && attempt < this.config.retryAttempts) {
+      // Don't retry on 4xx errors (client errors)
+      const shouldRetry = !response.ok && response.status >= 500
+      if (shouldRetry && attempt <= this.config.retryAttempts) {
         await new Promise(resolve => setTimeout(resolve, this.config.retryDelay * attempt))
         return this.sendWebhook(endpoint, payload, attempt + 1)
       }
     }
-    catch (error) {
-      if (attempt < this.config.retryAttempts) {
+    catch {
+      if (attempt <= this.config.retryAttempts) {
         await new Promise(resolve => setTimeout(resolve, this.config.retryDelay * attempt))
         return this.sendWebhook(endpoint, payload, attempt + 1)
       }
 
-      console.error(`Webhook failed after ${attempt} attempts:`, error)
+      // Silent fail - don't throw errors from webhooks
     }
   }
 

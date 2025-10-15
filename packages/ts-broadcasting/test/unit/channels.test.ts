@@ -4,10 +4,10 @@
  * Tests for channel management, authorization, and subscriptions
  */
 
-import { describe, expect, it, beforeEach } from 'bun:test'
-import { ChannelManager } from '../../src/channels'
 import type { ServerWebSocket } from 'bun'
 import type { WebSocketData } from '../../src/types'
+import { beforeEach, describe, expect, it } from 'bun:test'
+import { ChannelManager } from '../../src/channels'
 
 describe('ChannelManager', () => {
   let manager: ChannelManager
@@ -108,7 +108,7 @@ describe('ChannelManager', () => {
 
     it('should support pattern-based authorization', async () => {
       manager.channel('private-user.{userId}', (ws, params) => {
-        return params.userId === '123'
+        return params!.userId === '123'
       })
 
       const result1 = await manager.subscribe(mockWebSocket, 'private-user.123')
@@ -122,7 +122,7 @@ describe('ChannelManager', () => {
       mockWebSocket.data.user = { id: 123, name: 'John' }
 
       manager.channel('private-user.{userId}', (ws, params) => {
-        return ws.data.user?.id === Number.parseInt(params.userId)
+        return ws.data.user?.id === Number.parseInt(params!.userId)
       })
 
       const result = await manager.subscribe(mockWebSocket, 'private-user.123')
@@ -130,7 +130,7 @@ describe('ChannelManager', () => {
     })
 
     it('should handle async authorization callbacks', async () => {
-      manager.channel('private-user.{userId}', async (ws, params) => {
+      manager.channel('private-user.{userId}', async (_ws, _params) => {
         await new Promise(resolve => setTimeout(resolve, 10))
         return true
       })
@@ -149,8 +149,11 @@ describe('ChannelManager', () => {
 
       const result = await manager.subscribe(mockWebSocket, 'presence-chat.room1')
 
-      // Result is true on successful subscription
-      expect(result).toBe(true)
+      // Result is the presence member object on successful subscription
+      expect(result).toEqual({
+        id: 'user-123',
+        info: { name: 'John Doe' },
+      })
 
       // Check that member was added to presence channel
       const members = manager.getPresenceMembers('presence-chat.room1')
@@ -182,7 +185,7 @@ describe('ChannelManager', () => {
         data: { ...mockWebSocket.data, socketId: 'socket-456', channels: new Set() },
       } as any
 
-      manager.channel('presence-chat.{roomId}', (ws) => ({
+      manager.channel('presence-chat.{roomId}', ws => ({
         id: ws.data.socketId,
         info: { name: `User ${ws.data.socketId}` },
       }))
@@ -272,7 +275,7 @@ describe('ChannelManager', () => {
 
   describe('Pattern Matching', () => {
     it('should match wildcard patterns', async () => {
-      manager.channel('private-user.{userId}', (ws, params) => true)
+      manager.channel('private-user.{userId}', (_ws, _params) => true)
 
       const result1 = await manager.subscribe(mockWebSocket, 'private-user.123')
       const result2 = await manager.subscribe(mockWebSocket, 'private-user.abc')
@@ -283,7 +286,7 @@ describe('ChannelManager', () => {
 
     it('should match complex patterns', async () => {
       manager.channel('private-order.{orderId}.items.{itemId}', (ws, params) => {
-        return params.orderId && params.itemId
+        return !!(params!.orderId && params!.itemId)
       })
 
       const result = await manager.subscribe(mockWebSocket, 'private-order.123.items.456')

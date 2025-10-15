@@ -1,5 +1,5 @@
-import { AnonymousEvent, Broadcaster, BroadcastServer, config, createEvent } from '../src'
 import type { BroadcastEvent } from '../src'
+import { AnonymousEvent, Broadcaster, BroadcastServer, config, createEvent } from '../src'
 
 // Example 1: Using BroadcastEvent interface
 class OrderShipmentStatusUpdated implements BroadcastEvent {

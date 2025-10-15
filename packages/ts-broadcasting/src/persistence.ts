@@ -87,7 +87,10 @@ export class PersistenceManager {
   async clear(channel: string): Promise<void> {
     if (this.redis) {
       const key = this.getRedisKey(channel)
-      await this.redis.send('DEL', [key])
+      const client = this.redis as any
+      if (client.publisher) {
+        await client.publisher.del(key)
+      }
     }
     else {
       this.inMemoryStore.delete(channel)
@@ -105,15 +108,20 @@ export class PersistenceManager {
     const key = this.getRedisKey(channel)
     const value = JSON.stringify(message)
 
+    const client = this.redis as any
+    if (!client.publisher) {
+      return
+    }
+
     // Add to sorted set with timestamp as score
-    await this.redis.send('ZADD', [key, message.timestamp.toString(), value])
+    await client.publisher.zadd(key, message.timestamp, value)
 
     // Trim to max messages
     const removeCount = -this.config.maxMessages - 1
-    await this.redis.send('ZREMRANGEBYRANK', [key, '0', removeCount.toString()])
+    await client.publisher.send('ZREMRANGEBYRANK', [key, '0', removeCount.toString()])
 
     // Set TTL
-    await this.redis.send('EXPIRE', [key, this.config.ttl.toString()])
+    await client.publisher.expire(key, this.config.ttl)
   }
 
   /**
@@ -133,7 +141,12 @@ export class PersistenceManager {
     const maxScore = '+inf'
     const count = limit || this.config.maxMessages
 
-    const results = (await this.redis.send('ZRANGEBYSCORE', [
+    const client = this.redis as any
+    if (!client.publisher) {
+      return []
+    }
+
+    const results = (await client.publisher.send('ZRANGEBYSCORE', [
       key,
       minScore,
       maxScore,
@@ -178,12 +191,12 @@ export class PersistenceManager {
     const messages = this.inMemoryStore.get(channel) || []
 
     let filtered = messages
-    if (since) {
-      filtered = messages.filter(m => m.timestamp > since)
+    if (since !== undefined) {
+      filtered = messages.filter(m => m.timestamp >= since)
     }
 
     if (limit) {
-      filtered = filtered.slice(-limit)
+      filtered = filtered.slice(0, limit)
     }
 
     return filtered
@@ -199,31 +212,49 @@ export class PersistenceManager {
   /**
    * Get statistics about stored messages
    */
-  async getStats(): Promise<{ channels: number, totalMessages: number }> {
+  async getStats(): Promise<{ totalChannels: number, totalMessages: number, channels: Record<string, number> }> {
     if (this.redis) {
+      const client = this.redis as any
+      if (!client.publisher) {
+        return {
+          totalChannels: 0,
+          totalMessages: 0,
+          channels: {},
+        }
+      }
+
       // Get all history keys
-      const keys = (await this.redis.send('KEYS', ['history:*'])) as string[]
+      const keys = (await client.publisher.send('KEYS', ['history:*'])) as string[]
       let totalMessages = 0
+      const channels: Record<string, number> = {}
 
       for (const key of keys) {
-        const count = await this.redis.send('ZCARD', [key])
-        totalMessages += Number(count)
+        const count = await client.publisher.send('ZCARD', [key])
+        const channelName = key.replace('history:', '')
+        const messageCount = Number(count)
+        channels[channelName] = messageCount
+        totalMessages += messageCount
       }
 
       return {
-        channels: keys.length,
+        totalChannels: keys.length,
         totalMessages,
+        channels,
       }
     }
 
     let totalMessages = 0
-    for (const messages of this.inMemoryStore.values()) {
+    const channels: Record<string, number> = {}
+
+    for (const [channel, messages] of this.inMemoryStore.entries()) {
+      channels[channel] = messages.length
       totalMessages += messages.length
     }
 
     return {
-      channels: this.inMemoryStore.size,
+      totalChannels: this.inMemoryStore.size,
       totalMessages,
+      channels,
     }
   }
 }

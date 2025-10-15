@@ -70,6 +70,7 @@ export class ChannelManager {
     const channel = this.getChannel(channelName)
 
     // Check authorization for private/presence channels
+    let presenceMemberData: PresenceMember | null = null
     if (channel.type !== 'public') {
       const authorized = await this.authorize(ws, channelName, channelData)
       if (!authorized) {
@@ -80,6 +81,7 @@ export class ChannelManager {
       if (channel.type === 'presence' && typeof authorized === 'object') {
         const presenceChannel = channel as PresenceChannel
         presenceChannel.members.set(ws.data.socketId, authorized)
+        presenceMemberData = authorized
       }
     }
 
@@ -88,7 +90,8 @@ export class ChannelManager {
     ws.data.channels.add(channelName)
     ws.subscribe(channelName)
 
-    return true
+    // Return presence member data for presence channels, true otherwise
+    return presenceMemberData || true
   }
 
   /**
@@ -132,7 +135,7 @@ export class ChannelManager {
   async authorize(
     ws: ServerWebSocket<WebSocketData>,
     channelName: string,
-    channelData?: unknown,
+    _channelData?: unknown,
   ): Promise<boolean | PresenceMember> {
     // Find matching authorizer
     for (const [pattern, authorizer] of this.authorizers) {

@@ -1,4 +1,5 @@
 import type { BroadcastConfig } from '../src'
+import process from 'node:process'
 
 /**
  * Broadcasting Configuration
@@ -6,7 +7,7 @@ import type { BroadcastConfig } from '../src'
  * This file shows all available configuration options for the broadcasting system.
  * Copy this to `broadcast.config.ts` or `realtime.config.ts` and customize as needed.
  */
-export default {
+const config: BroadcastConfig = {
   // Enable verbose logging
   verbose: true,
 
@@ -96,4 +97,6 @@ export default {
       driver: 'null',
     },
   },
-} satisfies BroadcastConfig
+}
+
+export default config

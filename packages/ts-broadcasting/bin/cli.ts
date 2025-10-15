@@ -1,3 +1,4 @@
+import process from 'node:process'
 import { CLI } from '@stacksjs/clapp'
 import { version } from '../package.json'
 import { config } from '../src/config'

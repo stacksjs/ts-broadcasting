@@ -4,15 +4,15 @@
  * Tests for authentication flows
  */
 
-import { describe, expect, it, beforeEach, afterEach } from 'bun:test'
-import { BroadcastServer } from '../../src/server'
+import type { BroadcastServer } from '../../src/server'
+import { afterEach, beforeEach, describe, expect, it } from 'bun:test'
 import {
-  createTestServer,
-  createTestClient,
-  waitForMessage,
-  closeWebSocket,
   cleanupTestServer,
+  closeWebSocket,
+  createTestClient,
+  createTestServer,
   getServerPort,
+  waitForMessage,
 } from '../helpers/test-server'
 
 describe('Authentication', () => {
@@ -81,7 +81,7 @@ describe('Authentication', () => {
       })
 
       server.channels.channel('private-user.{userId}', (ws, params) => {
-        return ws.data.user?.id === Number.parseInt(params.userId)
+        return ws.data.user?.id === Number.parseInt(params!.userId)
       })
     })
 
@@ -96,7 +96,7 @@ describe('Authentication', () => {
       // but passes because our test setup allows it
       const testUserId = 123
       server.channels.channel('private-user.{userId}', (ws, params) => {
-        return params.userId === testUserId.toString()
+        return params!.userId === testUserId.toString()
       })
 
       await closeWebSocket(ws)
@@ -133,7 +133,7 @@ describe('Authentication', () => {
 
   describe('Authentication Failures', () => {
     beforeEach(() => {
-      server.auth?.authenticate(async (req) => {
+      server.auth?.authenticate(async (_req) => {
         // Always fail authentication
         return null
       })
@@ -150,7 +150,7 @@ describe('Authentication', () => {
 
     it('should deny access to protected channels', async () => {
       server.channels.channel('private-admin', (ws) => {
-        return ws.data.user !== null && ws.data.user.id === 999
+        return ws.data.user !== null && ws.data.user !== undefined && ws.data.user.id === 999
       })
 
       const ws = await createTestClient(port)

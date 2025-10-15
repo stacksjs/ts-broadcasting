@@ -4,10 +4,10 @@
  * Tests for broadcasting helper utilities
  */
 
-import { describe, expect, it, beforeEach, mock } from 'bun:test'
-import { BroadcastHelpers } from '../../src/helpers'
-import { Broadcaster } from '../../src/broadcaster'
+import type { Broadcaster } from '../../src/broadcaster'
 import type { BroadcastServer } from '../../src/server'
+import { beforeEach, describe, expect, it, mock } from 'bun:test'
+import { BroadcastHelpers } from '../../src/helpers'
 
 describe('BroadcastHelpers', () => {
   let helpers: BroadcastHelpers
@@ -18,7 +18,7 @@ describe('BroadcastHelpers', () => {
     mockServer = {
       channels: {
         getSubscribers: mock(() => new Set(['socket-1', 'socket-2'])),
-        getChannel: mock((channel: string) => ({
+        getChannel: mock((_channel: string) => ({
           subscribers: new Set(['socket-1']),
         })),
         getPresenceMembers: mock(() => new Map([

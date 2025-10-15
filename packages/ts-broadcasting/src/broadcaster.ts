@@ -1,10 +1,10 @@
+import type { BroadcastServer } from './server'
 import type {
   BroadcastConfig,
   BroadcastEvent,
   BroadcastMessage,
   QueueConfig,
 } from './types'
-import type { BroadcastServer } from './server'
 
 export class Broadcaster {
   private server: BroadcastServer
@@ -98,16 +98,26 @@ export class Broadcaster {
     channels: string[],
     queueName?: string,
   ): Promise<void> {
-    // This would integrate with a queue system
-    // For now, we'll just broadcast immediately
-    // In production, you'd integrate with BullMQ, or similar
+    // Check if queue manager is available
+    const queueManager = (this.server as any).queueManager
 
-    if (this.config.verbose) {
-      console.log(`Queueing broadcast to queue: ${queueName || this.queue?.queue || 'default'}`)
+    if (queueManager && queueManager.isEnabled()) {
+      if (this.config.verbose) {
+        console.warn(`Queueing broadcast to queue: ${queueName || this.queue?.queue || 'default'}`)
+      }
+
+      // Use the queue manager to queue the broadcast
+      await queueManager.queueBroadcast(channels, message.event, message.data, {
+        excludeSocketId: message.socketId,
+      })
     }
-
-    // TODO: Integrate with queue system
-    this.sendBroadcast(message, channels)
+    else {
+      // Fallback to immediate broadcast if queue is not available
+      if (this.config.verbose) {
+        console.warn('Queue not available, broadcasting immediately')
+      }
+      this.sendBroadcast(message, channels)
+    }
   }
 
   /**
@@ -193,7 +203,7 @@ export class AnonymousEvent {
   /**
    * Exclude a socket from receiving the broadcast
    */
-  toOthers(socketId: string): this {
+  toOthers(socketId: string): AnonymousEvent {
     // Create new instance with excludeSocketId set
     const newEvent = new AnonymousEvent(this.channels)
     newEvent.eventName = this.eventName

@@ -4,15 +4,15 @@
  * Tests for security and message sanitization
  */
 
-import { describe, expect, it, beforeEach, afterEach } from 'bun:test'
-import { BroadcastServer } from '../../src/server'
+import type { BroadcastServer } from '../../src/server'
+import { afterEach, beforeEach, describe, expect, it } from 'bun:test'
 import {
-  createTestServer,
-  createTestClient,
-  waitForMessage,
-  closeWebSocket,
   cleanupTestServer,
+  closeWebSocket,
+  createTestClient,
+  createTestServer,
   getServerPort,
+  waitForMessage,
 } from '../helpers/test-server'
 
 describe('Security Features', () => {
@@ -57,14 +57,20 @@ describe('Security Features', () => {
         data: 'a'.repeat(2 * 1024 * 1024), // 2MB
       }
 
+      // When a message exceeds Bun's maxPayloadLength, the connection is closed
+      const closePromise = new Promise<void>((resolve) => {
+        ws.addEventListener('close', () => resolve())
+      })
+
       ws.send(JSON.stringify(largeMessage))
 
-      const response = await waitForMessage(ws, 'error', 2000)
+      // Wait for connection to close
+      await Promise.race([
+        closePromise,
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Connection did not close')), 2000)),
+      ])
 
-      expect(response.event).toBe('error')
-      expect(response.data.type).toBe('PayloadTooLarge')
-
-      await closeWebSocket(ws)
+      expect(ws.readyState).toBe(WebSocket.CLOSED)
     })
   })
 
@@ -129,10 +135,12 @@ describe('Security Features', () => {
 
     it('should sanitize script tags in broadcasts', async () => {
       const ws1 = await createTestClient(port)
-      const ws2 = await createTestClient(port)
+      const ws1ConnPromise = waitForMessage(ws1, 'connection_established')
 
-      await waitForMessage(ws1, 'connection_established')
-      await waitForMessage(ws2, 'connection_established')
+      const ws2 = await createTestClient(port)
+      const ws2ConnPromise = waitForMessage(ws2, 'connection_established')
+
+      await Promise.all([ws1ConnPromise, ws2ConnPromise])
 
       await waitForMessage(ws1, 'subscription_succeeded', 2000)
         .catch(() => {

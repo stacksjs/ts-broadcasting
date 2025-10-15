@@ -6,6 +6,7 @@
 
 import type { ServerWebSocket } from 'bun'
 import type { User, WebSocketData } from './types'
+import process from 'node:process'
 
 // ==================== Authentication ====================
 
@@ -70,7 +71,7 @@ export class AuthenticationManager {
     const cookie = req.headers.get('cookie')
     if (cookie) {
       const cookies = this.parseCookies(cookie)
-      const token = cookies[this.config.cookie.name]
+      const token = cookies[this.config.cookie.name as string]
 
       if (token) {
         // Verify JWT or session token
@@ -419,15 +420,15 @@ export class SecurityManager {
    * Check CORS origin
    */
   checkOrigin(origin: string): boolean {
-    if (!this.config.cors.enabled) {
+    if (!this.config.cors?.enabled) {
       return true
     }
 
-    if (this.config.cors.origins.includes('*')) {
+    if (this.config.cors.origins?.includes('*')) {
       return true
     }
 
-    return this.config.cors.origins.includes(origin)
+    return this.config.cors.origins?.includes(origin) ?? false
   }
 
   /**

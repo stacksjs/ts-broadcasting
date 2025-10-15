@@ -4,16 +4,16 @@
  * Tests for public, private, and presence channel functionality
  */
 
-import { describe, expect, it, beforeEach, afterEach } from 'bun:test'
-import { BroadcastServer } from '../../src/server'
+import type { BroadcastServer } from '../../src/server'
+import { afterEach, beforeEach, describe, expect, it } from 'bun:test'
 import {
-  createTestServer,
-  createTestClient,
-  waitForMessage,
-  sendAndWait,
-  closeWebSocket,
   cleanupTestServer,
+  closeWebSocket,
+  createTestClient,
+  createTestServer,
   getServerPort,
+  sendAndWait,
+  waitForMessage,
 } from '../helpers/test-server'
 
 describe('Channel Subscriptions', () => {
@@ -47,10 +47,12 @@ describe('Channel Subscriptions', () => {
 
     it('should receive broadcasts on public channel', async () => {
       const ws1 = await createTestClient(port)
-      const ws2 = await createTestClient(port)
+      const ws1ConnPromise = waitForMessage(ws1, 'connection_established')
 
-      await waitForMessage(ws1, 'connection_established')
-      await waitForMessage(ws2, 'connection_established')
+      const ws2 = await createTestClient(port)
+      const ws2ConnPromise = waitForMessage(ws2, 'connection_established')
+
+      await Promise.all([ws1ConnPromise, ws2ConnPromise])
 
       await sendAndWait(ws1, {
         event: 'subscribe',
@@ -128,7 +130,7 @@ describe('Channel Subscriptions', () => {
       // Setup authorization for private channels
       server.channels.channel('private-user.{userId}', (ws, params) => {
         // For testing, allow if socketId contains userId
-        return ws.data.socketId.includes(params.userId) || params.userId === '123'
+        return ws.data.socketId.includes(params!.userId) || params!.userId === '123'
       })
     })
 
@@ -164,10 +166,12 @@ describe('Channel Subscriptions', () => {
 
     it('should support client events (whisper) on private channels', async () => {
       const ws1 = await createTestClient(port)
-      const ws2 = await createTestClient(port)
+      const ws1ConnPromise = waitForMessage(ws1, 'connection_established')
 
-      await waitForMessage(ws1, 'connection_established')
-      await waitForMessage(ws2, 'connection_established')
+      const ws2 = await createTestClient(port)
+      const ws2ConnPromise = waitForMessage(ws2, 'connection_established')
+
+      await Promise.all([ws1ConnPromise, ws2ConnPromise])
 
       // Subscribe both to same private channel
       await sendAndWait(ws1, {
@@ -198,10 +202,12 @@ describe('Channel Subscriptions', () => {
 
     it('should not allow client events on public channels', async () => {
       const ws1 = await createTestClient(port)
-      const ws2 = await createTestClient(port)
+      const ws1ConnPromise = waitForMessage(ws1, 'connection_established')
 
-      await waitForMessage(ws1, 'connection_established')
-      await waitForMessage(ws2, 'connection_established')
+      const ws2 = await createTestClient(port)
+      const ws2ConnPromise = waitForMessage(ws2, 'connection_established')
+
+      await Promise.all([ws1ConnPromise, ws2ConnPromise])
 
       await sendAndWait(ws1, {
         event: 'subscribe',
@@ -231,7 +237,7 @@ describe('Channel Subscriptions', () => {
   describe('Presence Channels', () => {
     beforeEach(() => {
       // Setup authorization for presence channels
-      server.channels.channel('presence-chat.{roomId}', (ws, params) => {
+      server.channels.channel('presence-chat.{roomId}', (ws, _params) => {
         return {
           id: ws.data.socketId,
           info: {
@@ -292,10 +298,12 @@ describe('Channel Subscriptions', () => {
 
     it('should notify when member leaves', async () => {
       const ws1 = await createTestClient(port)
-      const ws2 = await createTestClient(port)
+      const ws1ConnPromise = waitForMessage(ws1, 'connection_established')
 
-      await waitForMessage(ws1, 'connection_established')
-      await waitForMessage(ws2, 'connection_established')
+      const ws2 = await createTestClient(port)
+      const ws2ConnPromise = waitForMessage(ws2, 'connection_established')
+
+      await Promise.all([ws1ConnPromise, ws2ConnPromise])
 
       await sendAndWait(ws1, {
         event: 'subscribe',
@@ -326,10 +334,12 @@ describe('Channel Subscriptions', () => {
 
     it('should track presence member count', async () => {
       const ws1 = await createTestClient(port)
-      const ws2 = await createTestClient(port)
+      const ws1ConnPromise = waitForMessage(ws1, 'connection_established')
 
-      await waitForMessage(ws1, 'connection_established')
-      await waitForMessage(ws2, 'connection_established')
+      const ws2 = await createTestClient(port)
+      const ws2ConnPromise = waitForMessage(ws2, 'connection_established')
+
+      await Promise.all([ws1ConnPromise, ws2ConnPromise])
 
       await sendAndWait(ws1, {
         event: 'subscribe',
@@ -354,10 +364,12 @@ describe('Channel Subscriptions', () => {
   describe('Channel Broadcasting', () => {
     it('should broadcast to specific channel only', async () => {
       const wsNews = await createTestClient(port)
-      const wsAnnouncements = await createTestClient(port)
+      const wsNewsConnPromise = waitForMessage(wsNews, 'connection_established')
 
-      await waitForMessage(wsNews, 'connection_established')
-      await waitForMessage(wsAnnouncements, 'connection_established')
+      const wsAnnouncements = await createTestClient(port)
+      const wsAnnouncementsConnPromise = waitForMessage(wsAnnouncements, 'connection_established')
+
+      await Promise.all([wsNewsConnPromise, wsAnnouncementsConnPromise])
 
       await sendAndWait(wsNews, {
         event: 'subscribe',
@@ -384,10 +396,12 @@ describe('Channel Subscriptions', () => {
 
     it('should support broadcast exclusion (toOthers)', async () => {
       const ws1 = await createTestClient(port)
-      const ws2 = await createTestClient(port)
+      const ws1ConnPromise = waitForMessage(ws1, 'connection_established')
 
-      await waitForMessage(ws1, 'connection_established')
-      const ws2Connected = await waitForMessage(ws2, 'connection_established')
+      const ws2 = await createTestClient(port)
+      const ws2ConnPromise = waitForMessage(ws2, 'connection_established')
+
+      const [, ws2Connected] = await Promise.all([ws1ConnPromise, ws2ConnPromise])
       const ws2SocketId = ws2Connected.data.socket_id
 
       await sendAndWait(ws1, {

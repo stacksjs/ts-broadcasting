@@ -128,8 +128,9 @@ export class ChannelNamespaceManager {
 
     const parts = channel.split(this.config.separator)
     if (parts.length > 1) {
-      const namespace = parts[0]
-      const channelName = parts.slice(1).join(this.config.separator)
+      // Last part is the channel name, everything before is the namespace
+      const channelName = parts[parts.length - 1]
+      const namespace = parts.slice(0, -1).join(this.config.separator)
 
       if (this.config.validateNamespace(namespace)) {
         return { namespace, channel: channelName }
@@ -155,7 +156,11 @@ export class ChannelNamespaceManager {
    */
   belongsTo(channel: string, namespace: string): boolean {
     const parsed = this.parse(channel)
-    return parsed.namespace === namespace
+    if (!parsed.namespace) {
+      return false
+    }
+    // Check exact match or if it's a parent namespace
+    return parsed.namespace === namespace || parsed.namespace.startsWith(namespace + this.config.separator)
   }
 
   /**

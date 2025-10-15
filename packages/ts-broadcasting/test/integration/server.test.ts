@@ -4,16 +4,16 @@
  * Tests for core server functionality
  */
 
-import { describe, expect, it, beforeEach, afterEach } from 'bun:test'
-import { BroadcastServer } from '../../src/server'
+import type { BroadcastServer } from '../../src/server'
+import { afterEach, beforeEach, describe, expect, it } from 'bun:test'
 import {
-  createTestServer,
-  createTestClient,
-  waitForMessage,
-  sendAndWait,
-  closeWebSocket,
   cleanupTestServer,
+  closeWebSocket,
+  createTestClient,
+  createTestServer,
   getServerPort,
+  sendAndWait,
+  waitForMessage,
 } from '../helpers/test-server'
 
 describe('BroadcastServer - Core Functionality', () => {
@@ -36,13 +36,15 @@ describe('BroadcastServer - Core Functionality', () => {
     })
 
     it('should stop server gracefully', async () => {
-      await server.stop()
-      expect(server.getConnectionCount()).toBe(0)
+      // Create a separate server for this test to avoid affecting other tests
+      const testServer = await createTestServer({ port: 0 })
+      await testServer.stop()
+      expect(testServer.getConnectionCount()).toBe(0)
     })
 
     it('should provide health endpoint', async () => {
       const response = await fetch(`http://127.0.0.1:${port}/health`)
-      const health = await response.json()
+      const health = await response.json() as { status: string, redis: any }
 
       expect(response.status).toBe(200)
       expect(health.status).toBe('ok')
@@ -77,10 +79,12 @@ describe('BroadcastServer - Core Functionality', () => {
 
     it('should assign unique socket IDs', async () => {
       const ws1 = await createTestClient(port)
-      const ws2 = await createTestClient(port)
+      const msg1Promise = waitForMessage(ws1, 'connection_established')
 
-      const msg1 = await waitForMessage(ws1, 'connection_established')
-      const msg2 = await waitForMessage(ws2, 'connection_established')
+      const ws2 = await createTestClient(port)
+      const msg2Promise = waitForMessage(ws2, 'connection_established')
+
+      const [msg1, msg2] = await Promise.all([msg1Promise, msg2Promise])
 
       expect(msg1.data.socket_id).not.toBe(msg2.data.socket_id)
 

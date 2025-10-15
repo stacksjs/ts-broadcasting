@@ -7,15 +7,22 @@ preload = []
 # Coverage
 coverage = true
 coverageThreshold = 80
-coverageReporter = ["text", "html", "json"]
+coverageReporter = [
+  "text",
+  "html",
+  "json"
+]
 coverageDir = "./coverage"
 
 # Timeouts
 timeout = 5000 # 5 seconds default timeout
 
 # Test patterns
-include = ["test/**/*.test.ts"]
-exclude = ["node_modules/**", "dist/**"]
+include = [ "test/**/*.test.ts" ]
+exclude = [
+  "node_modules/**",
+  "dist/**"
+]
 
 # Bail on first failure (useful for debugging)
 # bail = true

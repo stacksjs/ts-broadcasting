@@ -9,7 +9,10 @@
  * - Security
  */
 
-import { BroadcastServer, type ServerConfig } from '../src'
+/* eslint-disable no-console */
+import type { ServerConfig } from '../src'
+import process from 'node:process'
+import { BroadcastServer } from '../src'
 
 async function main() {
   // Create server with all features enabled

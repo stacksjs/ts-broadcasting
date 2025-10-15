@@ -56,11 +56,11 @@ export type Compressor =
 // WebSocket server types
 export interface BroadcastServer {
   server: BunServer
-  start(): Promise<void>
-  stop(): Promise<void>
-  broadcast(channel: string, event: string, data: unknown): void
-  getConnectionCount(): number
-  getSubscriberCount(channel: string): number
+  start: () => Promise<void>
+  stop: () => Promise<void>
+  broadcast: (channel: string, event: string, data: unknown) => void
+  getConnectionCount: () => number
+  getSubscriberCount: (channel: string) => number
 }
 
 export interface WebSocketData {
@@ -106,18 +106,18 @@ export interface ChannelAuthorizationCallback {
 }
 
 export interface ChannelAuthorizationClass {
-  join(socket: ServerWebSocket<WebSocketData>, params?: Record<string, string>): boolean | PresenceMember | Promise<boolean | PresenceMember>
+  join: (socket: ServerWebSocket<WebSocketData>, params?: Record<string, string>) => boolean | PresenceMember | Promise<boolean | PresenceMember>
 }
 
 // Events
 export interface BroadcastEvent {
-  shouldBroadcast(): boolean
-  broadcastOn(): string | string[]
-  broadcastAs?(): string
-  broadcastWith?(): Record<string, unknown>
-  broadcastWhen?(): boolean
-  broadcastQueue?(): string
-  broadcastConnection?(): string
+  shouldBroadcast: () => boolean
+  broadcastOn: () => string | string[]
+  broadcastAs?: () => string
+  broadcastWith?: () => Record<string, unknown>
+  broadcastWhen?: () => boolean
+  broadcastQueue?: () => string
+  broadcastConnection?: () => string
 }
 
 export interface BroadcastMessage {

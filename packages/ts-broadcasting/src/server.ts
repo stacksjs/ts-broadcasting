@@ -11,6 +11,15 @@
  */
 
 import type { Server as BunServer, ServerWebSocket } from 'bun'
+import type { Buffer } from 'node:buffer'
+import type { AckConfig } from './acknowledgments'
+import type { BatchConfig } from './batch-operations'
+import type { EncryptionConfig } from './encryption'
+import type { LoadConfig } from './load-management'
+import type { AuthConfig, RateLimitConfig, SecurityConfig } from './middleware'
+import type { PersistenceConfig } from './persistence'
+import type { HeartbeatConfig } from './presence-heartbeat'
+import type { RedisConfig } from './redis-adapter'
 import type {
   BroadcastConfig,
   ClientEventMessage,
@@ -19,29 +28,31 @@ import type {
   UnsubscribeMessage,
   WebSocketData,
 } from './types'
-import { ChannelManager } from './channels'
+import type { WebhookConfig } from './webhooks'
+import process from 'node:process'
+import { AcknowledgmentManager } from './acknowledgments'
+import { BatchOperationsManager } from './batch-operations'
 import { Broadcaster } from './broadcaster'
+import { ChannelNamespaceManager, ChannelStateManager } from './channel-state'
+import { ChannelManager } from './channels'
+import { EncryptionManager } from './encryption'
 import { BroadcastHelpers } from './helpers'
-import { RedisAdapter, type RedisConfig } from './redis-adapter'
+import { ChannelLifecycleManager } from './lifecycle-hooks'
+import { LoadManager } from './load-management'
 import {
+
   AuthenticationManager,
   MessageValidationManager,
   MonitoringManager,
+
   RateLimiter,
+
   SecurityManager,
-  type AuthConfig,
-  type RateLimitConfig,
-  type SecurityConfig,
 } from './middleware'
-import { EncryptionManager, type EncryptionConfig } from './encryption'
-import { WebhookManager, type WebhookConfig } from './webhooks'
-import { PersistenceManager, type PersistenceConfig } from './persistence'
-import { ChannelStateManager, ChannelNamespaceManager } from './channel-state'
-import { PresenceHeartbeatManager, type HeartbeatConfig } from './presence-heartbeat'
-import { AcknowledgmentManager, type AckConfig } from './acknowledgments'
-import { BatchOperationsManager, type BatchConfig } from './batch-operations'
-import { ChannelLifecycleManager } from './lifecycle-hooks'
-import { LoadManager, type LoadConfig } from './load-management'
+import { PersistenceManager } from './persistence'
+import { PresenceHeartbeatManager } from './presence-heartbeat'
+import { RedisAdapter } from './redis-adapter'
+import { WebhookManager } from './webhooks'
 
 export interface ServerConfig extends BroadcastConfig {
   redis?: RedisConfig
@@ -57,6 +68,22 @@ export interface ServerConfig extends BroadcastConfig {
   acknowledgments?: AckConfig
   batch?: BatchConfig
   loadManagement?: LoadConfig
+  queue?: {
+    enabled?: boolean
+    connection?: string
+    defaultQueue?: string
+    retry?: {
+      attempts?: number
+      backoff?: {
+        type: 'fixed' | 'exponential'
+        delay: number
+      }
+    }
+    deadLetter?: {
+      enabled?: boolean
+      maxRetries?: number
+    }
+  }
 }
 
 export class BroadcastServer {
@@ -88,6 +115,7 @@ export class BroadcastServer {
   public batchOps?: BatchOperationsManager
   public lifecycle?: ChannelLifecycleManager
   public loadManager?: LoadManager
+  public queueManager?: any // Will be typed as BroadcastQueueManager
 
   constructor(config: ServerConfig) {
     this.config = config
@@ -148,19 +176,41 @@ export class BroadcastServer {
       this.loadManager = new LoadManager(config.loadManagement)
     }
 
+    // Initialize queue manager if configured
+    if (config.queue?.enabled) {
+      // Queue manager will be lazy-loaded on first use to avoid import issues
+      this.initializeQueueManager()
+    }
+
     // Setup presence heartbeat removal callback
     if (this.presenceHeartbeat) {
       this.presenceHeartbeat.onUserRemove((channel, socketId, user) => {
         // Remove member from presence channel
         this.broadcast(channel, 'member_removed', { id: socketId, user }, socketId)
         if (this.config.verbose) {
-          console.log(`Removed inactive user ${socketId} from ${channel}`)
+          console.warn(`Removed inactive user ${socketId} from ${channel}`)
         }
       })
     }
 
     // Setup default validators
     this.setupDefaultValidators()
+  }
+
+  /**
+   * Initialize queue manager (lazy loaded)
+   */
+  private async initializeQueueManager(): Promise<void> {
+    try {
+      const { BroadcastQueueManager } = await import('./queue-manager')
+      this.queueManager = new BroadcastQueueManager(this, this.config.queue)
+      if (this.config.verbose) {
+        console.warn('Queue manager initialized')
+      }
+    }
+    catch (error) {
+      console.error('Failed to initialize queue manager:', error)
+    }
   }
 
   /**
@@ -171,7 +221,7 @@ export class BroadcastServer {
     if (this.presenceHeartbeat) {
       this.presenceHeartbeat.start()
       if (this.config.verbose) {
-        console.log('Started presence heartbeat monitoring')
+        console.warn('Started presence heartbeat monitoring')
       }
     }
 
@@ -189,7 +239,7 @@ export class BroadcastServer {
       })
 
       if (this.config.verbose) {
-        console.log('Connected to Redis for horizontal scaling')
+        console.warn('Connected to Redis for horizontal scaling')
       }
     }
 
@@ -199,7 +249,7 @@ export class BroadcastServer {
     }
 
     const host = connectionConfig.host || '0.0.0.0'
-    const port = connectionConfig.port || 6001
+    const port = connectionConfig.port ?? 6001
 
     this.server = Bun.serve({
       hostname: host,
@@ -222,6 +272,18 @@ export class BroadcastServer {
           return Response.json(await this.getStats())
         }
 
+        // Prometheus metrics endpoint
+        if (url.pathname === '/metrics') {
+          const { PrometheusExporter } = await import('./metrics/prometheus')
+          const exporter = new PrometheusExporter(this)
+          const metrics = await exporter.export()
+          return new Response(metrics, {
+            headers: {
+              'Content-Type': 'text/plain; version=0.0.4',
+            },
+          })
+        }
+
         // WebSocket upgrade
         if (url.pathname === '/app' || url.pathname === '/ws') {
           // Authenticate if enabled
@@ -236,7 +298,7 @@ export class BroadcastServer {
               socketId: crypto.randomUUID(),
               channels: new Set<string>(),
               connectedAt: Date.now(),
-              user,
+              user: user ?? undefined,
             } satisfies WebSocketData,
           })
 
@@ -263,10 +325,6 @@ export class BroadcastServer {
           this.handleClose(ws, code, reason)
         },
 
-        error: (ws: ServerWebSocket<WebSocketData>, error: Error) => {
-          this.handleError(ws, error)
-        },
-
         drain: (ws: ServerWebSocket<WebSocketData>) => {
           this.handleDrain(ws)
         },
@@ -282,7 +340,7 @@ export class BroadcastServer {
     })
 
     if (this.config.verbose) {
-      console.log(`Broadcasting server started on ${host}:${port}`)
+      console.warn(`Broadcasting server started on ${host}:${port}`)
     }
 
     // Emit server start metric
@@ -313,6 +371,11 @@ export class BroadcastServer {
       this.acknowledgments.clear()
     }
 
+    // Close queue manager
+    if (this.queueManager) {
+      await this.queueManager.close()
+    }
+
     // Disconnect from Redis
     if (this.redis) {
       this.redis.close()
@@ -323,7 +386,7 @@ export class BroadcastServer {
       this.connections.clear()
 
       if (this.config.verbose) {
-        console.log('Broadcasting server stopped')
+        console.warn('Broadcasting server stopped')
       }
     }
 
@@ -394,7 +457,7 @@ export class BroadcastServer {
     })
 
     if (this.config.verbose) {
-      console.log(`WebSocket connected: ${ws.data.socketId}`)
+      console.warn(`WebSocket connected: ${ws.data.socketId}`)
     }
   }
 
@@ -636,7 +699,7 @@ export class BroadcastServer {
       })
 
       if (this.config.verbose) {
-        console.log(`Socket ${ws.data.socketId} subscribed to ${channel}`)
+        console.warn(`Socket ${ws.data.socketId} subscribed to ${channel}`)
       }
     }
     catch (error) {
@@ -690,7 +753,7 @@ export class BroadcastServer {
     })
 
     if (this.config.verbose) {
-      console.log(`Socket ${ws.data.socketId} unsubscribed from ${channel}`)
+      console.warn(`Socket ${ws.data.socketId} unsubscribed from ${channel}`)
     }
   }
 
@@ -714,8 +777,26 @@ export class BroadcastServer {
    * Handle WebSocket close
    */
   private handleClose(ws: ServerWebSocket<WebSocketData>, code: number, reason: string): void {
+    // Get presence channel member info before unsubscribing
+    const presenceMemberInfo: Map<string, any> = new Map()
+    for (const channelName of ws.data.channels) {
+      const channelType = this.channels.getChannelType(channelName)
+      if (channelType === 'presence') {
+        const members = this.channels.getPresenceMembers(channelName)
+        const memberInfo = members?.get(ws.data.socketId)
+        if (memberInfo) {
+          presenceMemberInfo.set(channelName, memberInfo)
+        }
+      }
+    }
+
     // Unsubscribe from all channels
     this.channels.unsubscribeAll(ws)
+
+    // Notify other members about presence channel departures
+    for (const [channelName, memberInfo] of presenceMemberInfo) {
+      this.broadcast(channelName, 'member_removed', memberInfo, ws.data.socketId)
+    }
 
     // Unregister from load manager
     if (this.loadManager) {
@@ -750,7 +831,7 @@ export class BroadcastServer {
     })
 
     if (this.config.verbose) {
-      console.log(`WebSocket closed: ${ws.data.socketId} (${code}: ${reason})`)
+      console.warn(`WebSocket closed: ${ws.data.socketId} (${code}: ${reason})`)
     }
   }
 
@@ -776,7 +857,7 @@ export class BroadcastServer {
   private handleDrain(ws: ServerWebSocket<WebSocketData>): void {
     // Socket is ready to receive more data
     if (this.config.verbose) {
-      console.log(`WebSocket drained: ${ws.data.socketId}`)
+      console.warn(`WebSocket drained: ${ws.data.socketId}`)
     }
   }
 
@@ -998,7 +1079,7 @@ export class BroadcastServer {
         return 'Event name too long'
       }
 
-      if (!/^[a-zA-Z0-9._-]+$/.test(event)) {
+      if (!/^[\w.-]+$/.test(event)) {
         return 'Event name contains invalid characters'
       }
 

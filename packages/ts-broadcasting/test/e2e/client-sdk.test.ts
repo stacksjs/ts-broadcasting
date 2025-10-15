@@ -4,12 +4,12 @@
  * End-to-end tests for the client-side SDK
  */
 
-import { describe, expect, it, beforeEach, afterEach } from 'bun:test'
-import { BroadcastServer } from '../../src/server'
+import type { BroadcastServer } from '../../src/server'
+import { afterEach, beforeEach, describe, expect, it } from 'bun:test'
 import Echo from '../../src/client'
 import {
-  createTestServer,
   cleanupTestServer,
+  createTestServer,
   getServerPort,
   waitFor,
 } from '../helpers/test-server'
@@ -94,9 +94,9 @@ describe('Client SDK (Echo)', () => {
     it('should subscribe to public channel', async () => {
       const channel = echo.channel('news')
 
-      await waitFor(() => channel.subscribed, 2000)
+      await waitFor(() => channel.isSubscribed, 2000)
 
-      expect(channel.subscribed).toBe(true)
+      expect(channel.isSubscribed).toBe(true)
     })
 
     it('should receive events on public channel', async () => {
@@ -110,7 +110,7 @@ describe('Client SDK (Echo)', () => {
         eventData = data
       })
 
-      await waitFor(() => channel.subscribed, 2000)
+      await waitFor(() => channel.isSubscribed, 2000)
 
       // Broadcast from server
       server.broadcaster.send('news', 'article.created', {
@@ -128,13 +128,13 @@ describe('Client SDK (Echo)', () => {
     it('should unsubscribe from public channel', async () => {
       const channel = echo.channel('news')
 
-      await waitFor(() => channel.subscribed, 2000)
+      await waitFor(() => channel.isSubscribed, 2000)
 
       channel.unsubscribe()
 
-      await waitFor(() => !channel.subscribed, 2000)
+      await waitFor(() => !channel.isSubscribed, 2000)
 
-      expect(channel.subscribed).toBe(false)
+      expect(channel.isSubscribed).toBe(false)
     })
 
     it('should handle multiple listeners on same channel', async () => {
@@ -151,7 +151,7 @@ describe('Client SDK (Echo)', () => {
         listener2Called = true
       })
 
-      await waitFor(() => channel.subscribed, 2000)
+      await waitFor(() => channel.isSubscribed, 2000)
 
       server.broadcaster.send('news', 'update', { message: 'test' })
 
@@ -179,9 +179,9 @@ describe('Client SDK (Echo)', () => {
     it('should subscribe to private channel', async () => {
       const channel = echo.private('user.123')
 
-      await waitFor(() => channel.subscribed, 2000)
+      await waitFor(() => channel.isSubscribed, 2000)
 
-      expect(channel.subscribed).toBe(true)
+      expect(channel.isSubscribed).toBe(true)
     })
 
     it('should send and receive whisper events', async () => {
@@ -196,7 +196,7 @@ describe('Client SDK (Echo)', () => {
 
       const channel2 = echo2.private('user.123')
 
-      await waitFor(() => channel1.subscribed && channel2.subscribed, 2000)
+      await waitFor(() => channel1.isSubscribed && channel2.isSubscribed, 2000)
 
       let receivedWhisper = false
       let whisperData: any = null
@@ -241,15 +241,15 @@ describe('Client SDK (Echo)', () => {
     it('should subscribe to presence channel', async () => {
       const channel = echo.join('chat.room1')
 
-      await waitFor(() => channel.subscribed, 2000)
+      await waitFor(() => channel.isSubscribed, 2000)
 
-      expect(channel.subscribed).toBe(true)
+      expect(channel.isSubscribed).toBe(true)
     })
 
     it('should receive current members on join', async () => {
       const channel = echo.join('chat.room1')
 
-      await waitFor(() => channel.subscribed, 2000)
+      await waitFor(() => channel.isSubscribed, 2000)
 
       const members = (channel as any).members
       expect(members).toBeDefined()
@@ -259,18 +259,18 @@ describe('Client SDK (Echo)', () => {
     it('should notify when member joins', async () => {
       const channel1 = echo.join('chat.room1')
 
-      await waitFor(() => channel1.subscribed, 2000)
+      await waitFor(() => channel1.isSubscribed, 2000)
 
       let memberJoined = false
       let joinedMember: any = null
 
-      channel1.here((members: any[]) => {
+      channel1.here((_members: any[]) => {
         // Initial members
       })
 
-      channel1.joining((member: any) => {
+      channel1.joining((_member: any) => {
         memberJoined = true
-        joinedMember = member
+        joinedMember = _member
       })
 
       // Create second client
@@ -284,7 +284,7 @@ describe('Client SDK (Echo)', () => {
 
       const channel2 = echo2.join('chat.room1')
 
-      await waitFor(() => channel2.subscribed, 2000)
+      await waitFor(() => channel2.isSubscribed, 2000)
       await waitFor(() => memberJoined, 2000)
 
       expect(memberJoined).toBe(true)
@@ -305,11 +305,11 @@ describe('Client SDK (Echo)', () => {
       const channel1 = echo.join('chat.room1')
       const channel2 = echo2.join('chat.room1')
 
-      await waitFor(() => channel1.subscribed && channel2.subscribed, 2000)
+      await waitFor(() => channel1.isSubscribed && channel2.isSubscribed, 2000)
 
       let memberLeft = false
 
-      channel1.leaving((member: any) => {
+      channel1.leaving((_member: any) => {
         memberLeft = true
       })
 
@@ -399,7 +399,7 @@ describe('Client SDK (Echo)', () => {
 
       const channel = echo.private('forbidden')
 
-      channel.error((error: any) => {
+      channel.error((_error: any) => {
         subscriptionFailed = true
       })
 
@@ -423,27 +423,27 @@ describe('Client SDK (Echo)', () => {
     it('should leave channel', async () => {
       const channel = echo.channel('news')
 
-      await waitFor(() => channel.subscribed, 2000)
+      await waitFor(() => channel.isSubscribed, 2000)
 
       echo.leave('news')
 
-      await waitFor(() => !channel.subscribed, 2000)
+      await waitFor(() => !channel.isSubscribed, 2000)
 
-      expect(channel.subscribed).toBe(false)
+      expect(channel.isSubscribed).toBe(false)
     })
 
     it('should leave all channels on disconnect', async () => {
       const channel1 = echo.channel('news')
       const channel2 = echo.channel('announcements')
 
-      await waitFor(() => channel1.subscribed && channel2.subscribed, 2000)
+      await waitFor(() => channel1.isSubscribed && channel2.isSubscribed, 2000)
 
       echo.disconnect()
 
-      await waitFor(() => !channel1.subscribed && !channel2.subscribed, 2000)
+      await waitFor(() => !channel1.isSubscribed && !channel2.isSubscribed, 2000)
 
-      expect(channel1.subscribed).toBe(false)
-      expect(channel2.subscribed).toBe(false)
+      expect(channel1.isSubscribed).toBe(false)
+      expect(channel2.isSubscribed).toBe(false)
     })
   })
 })

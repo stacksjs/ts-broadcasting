@@ -9,7 +9,7 @@ import { expect } from 'bun:test'
 /**
  * Assert that a WebSocket message has expected structure
  */
-export function assertWebSocketMessage(message: any, expectedEvent: string, expectedData?: any) {
+export function assertWebSocketMessage(message: any, expectedEvent: string, expectedData?: any): void {
   expect(message).toBeDefined()
   expect(message.event).toBe(expectedEvent)
 
@@ -21,7 +21,7 @@ export function assertWebSocketMessage(message: any, expectedEvent: string, expe
 /**
  * Assert that an array contains an item matching predicate
  */
-export function assertArrayContains<T>(array: T[], predicate: (item: T) => boolean, message?: string) {
+export function assertArrayContains<T>(array: T[], predicate: (item: T) => boolean, _message?: string): void {
   const found = array.some(predicate)
   expect(found).toBe(true)
 }
@@ -48,7 +48,7 @@ export async function assertRejects(
 /**
  * Assert that a function throws with specific error
  */
-export function assertThrows(fn: () => void, errorMessage?: string) {
+export function assertThrows(fn: () => void, errorMessage?: string): void {
   try {
     fn()
     throw new Error('Expected function to throw')
@@ -68,7 +68,7 @@ export function assertEventEmitted(
   events: any[],
   eventType: string,
   predicate?: (event: any) => boolean,
-) {
+): any {
   const found = events.find(e => e.type === eventType && (!predicate || predicate(e)))
   expect(found).toBeDefined()
   return found

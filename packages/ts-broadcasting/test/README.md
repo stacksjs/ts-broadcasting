@@ -170,7 +170,7 @@ Located in `helpers/assertions.ts`:
 
 ### Unit Test Template
 ```typescript
-import { describe, expect, it, beforeEach } from 'bun:test'
+import { beforeEach, describe, expect, it } from 'bun:test'
 
 describe('MyComponent', () => {
   let component: MyComponent
@@ -188,8 +188,8 @@ describe('MyComponent', () => {
 
 ### Integration Test Template
 ```typescript
-import { describe, expect, it, beforeEach, afterEach } from 'bun:test'
-import { createTestServer, cleanupTestServer } from '../helpers/test-server'
+import { afterEach, beforeEach, describe, expect, it } from 'bun:test'
+import { cleanupTestServer, createTestServer } from '../helpers/test-server'
 
 describe('MyFeature', () => {
   let server: BroadcastServer

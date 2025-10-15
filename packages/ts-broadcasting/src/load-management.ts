@@ -4,6 +4,8 @@
  * Backpressure handling and load shedding
  */
 
+import process from 'node:process'
+
 export interface LoadConfig {
   maxConnections?: number
   maxChannelsPerConnection?: number
@@ -126,8 +128,8 @@ export class LoadManager {
       0,
     )
 
-    const averageChannelsPerConnection =
-      this.connectionCount > 0 ? totalChannels / this.connectionCount : 0
+    const averageChannelsPerConnection
+      = this.connectionCount > 0 ? totalChannels / this.connectionCount : 0
 
     return {
       connections: this.connectionCount,
