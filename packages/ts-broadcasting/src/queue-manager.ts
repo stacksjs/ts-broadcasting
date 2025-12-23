@@ -2,11 +2,63 @@
  * Queue Manager for Broadcasting
  *
  * Integrates bun-queue for reliable message delivery and background processing
+ * Note: bun-queue is an optional dependency. Queue features will be disabled if not installed.
  */
 
-import type { DeadLetterQueue, Job, JobContract, Queue } from 'bun-queue'
 import type { BroadcastServer } from './server'
-import { getQueueManager } from 'bun-queue'
+
+// Optional bun-queue types (defined inline to avoid hard dependency)
+interface DeadLetterQueue<T = unknown> {
+  getJobs(start?: number, end?: number): Promise<Job<T>[]>
+}
+
+interface Job<T = unknown> {
+  id: string
+  data: T
+}
+
+interface JobContract {
+  connection?: string
+  queue?: string
+  delay?: number
+  tries?: number
+  timeout?: number
+  backoff?: [number, number]
+  handle(context: unknown): Promise<void>
+  failed?(error: Error): void
+}
+
+interface Queue {
+  dispatchJob(job: JobContract, context: unknown): Promise<Job<unknown>>
+  scheduleCron(options: { cron: string, data: unknown, name: string }): Promise<string>
+  unscheduleCron(jobId: string): Promise<boolean>
+  getJobCounts(): Promise<{ waiting: number, active: number, completed: number, failed: number, delayed: number }>
+  getJobs(state: string, start?: number, end?: number): Promise<Job<unknown>[]>
+  retryJob(jobId: string): Promise<Job<unknown> | null>
+  republishDeadLetterJob(jobId: string, options: { resetRetries: boolean }): Promise<Job<unknown> | null>
+  bulkRemove(jobIds: string[]): Promise<void>
+  clearDeadLetterQueue(): Promise<void>
+  getDeadLetterQueue(): DeadLetterQueue<unknown>
+  processJobs(concurrency: number): void
+  close(): Promise<void>
+}
+
+interface QueueManager {
+  connection(name: string): { queue(name: string): Queue }
+}
+
+// Try to load bun-queue dynamically
+let bunQueueAvailable = false
+let getQueueManager: (() => QueueManager) | null = null
+
+try {
+  const bunQueue = await import('bun-queue')
+  getQueueManager = bunQueue.getQueueManager
+  bunQueueAvailable = true
+}
+catch {
+  // bun-queue not installed, queue features will be disabled
+}
 
 export interface BroadcastQueueConfig {
   enabled?: boolean
@@ -148,6 +200,12 @@ export class BroadcastQueueManager {
    * Initialize the queue system
    */
   private async initializeQueue(): Promise<void> {
+    if (!bunQueueAvailable || !getQueueManager) {
+      console.warn('bun-queue is not installed. Queue features will be disabled.')
+      this.config.enabled = false
+      return
+    }
+
     try {
       // Get the queue manager from bun-queue
       const manager = getQueueManager()
