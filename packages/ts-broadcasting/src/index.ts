@@ -1,8 +1,13 @@
 export * from './acknowledgments'
 export * from './batch-operations'
 export * from './broadcaster'
-export { AnonymousEvent, Broadcaster, createEvent } from './broadcaster'
+export { AnonymousEvent, Broadcaster, BroadcastTo, createEvent } from './broadcaster'
 export * from './channel-state'
+
+// Facade and global helpers (Laravel-style API)
+export * from './facade'
+export { Broadcast, broadcast, broadcastToUser, broadcastToUsers, channel } from './facade'
+export type { ChannelAuthCallback } from './facade'
 
 export * from './channels'
 export { ChannelManager } from './channels'

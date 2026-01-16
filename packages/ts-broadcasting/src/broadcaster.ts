@@ -62,7 +62,7 @@ export class Broadcaster {
   /**
    * Broadcast to specific channels with event name and data
    */
-  send(channels: string | string[], event: string, data: unknown): void {
+  send<TData = unknown>(channels: string | string[], event: string, data: TData): void {
     const normalizedChannels = this.normalizeChannels(channels)
 
     const message: BroadcastMessage = {
@@ -150,7 +150,7 @@ export class BroadcastTo {
   /**
    * Send to specific channels
    */
-  send(channels: string | string[], event: string, data: unknown): void {
+  send<TData = unknown>(channels: string | string[], event: string, data: TData): void {
     this.broadcaster.send(channels, event, data)
   }
 }
@@ -174,10 +174,10 @@ export function createEvent(
 /**
  * Anonymous event broadcasting
  */
-export class AnonymousEvent {
+export class AnonymousEvent<TData = unknown> {
   private channels: string[]
   private eventName: string = 'AnonymousEvent'
-  private data: unknown = {}
+  private data: TData | Record<string, never> = {}
   public readonly excludeSocketId?: string
 
   constructor(channels: string | string[]) {
@@ -195,9 +195,10 @@ export class AnonymousEvent {
   /**
    * Set the event data
    */
-  with(data: unknown): this {
-    this.data = data
-    return this
+  with<T = TData>(data: T): AnonymousEvent<T> {
+    const event = this as unknown as AnonymousEvent<T>
+    event.data = data
+    return event
   }
 
   /**

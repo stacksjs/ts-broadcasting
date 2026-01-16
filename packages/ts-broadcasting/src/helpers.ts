@@ -19,14 +19,14 @@ export class BroadcastHelpers {
   /**
    * Broadcast to a specific user's private channel
    */
-  toUser(userId: string | number, event: string, data: unknown): void {
+  toUser<TData = unknown>(userId: string | number, event: string, data: TData): void {
     this.broadcaster.send(`private-user.${userId}`, event, data)
   }
 
   /**
    * Broadcast to multiple users
    */
-  toUsers(userIds: Array<string | number>, event: string, data: unknown): void {
+  toUsers<TData = unknown>(userIds: Array<string | number>, event: string, data: TData): void {
     const channels = userIds.map(id => `private-user.${id}`)
     this.broadcaster.send(channels, event, data)
   }
@@ -34,7 +34,7 @@ export class BroadcastHelpers {
   /**
    * Broadcast to all users except specific ones
    */
-  exceptUsers(userIds: Array<string | number>, channel: string, event: string, data: unknown): void {
+  exceptUsers<TData = unknown>(userIds: Array<string | number>, channel: string, event: string, data: TData): void {
     // Get all subscribers
     const allSubscribers = this.server.channels.getSubscribers(channel)
 
@@ -57,14 +57,14 @@ export class BroadcastHelpers {
   /**
    * Broadcast to all connected users
    */
-  toAll(event: string, data: unknown): void {
+  toAll<TData = unknown>(event: string, data: TData): void {
     this.broadcaster.send('broadcast', event, data)
   }
 
   /**
    * Broadcast to users in a specific role
    */
-  toRole(role: string, event: string, data: unknown): void {
+  toRole<TData = unknown>(role: string, event: string, data: TData): void {
     this.broadcaster.send(`role.${role}`, event, data)
   }
 
@@ -102,14 +102,14 @@ export class BroadcastHelpers {
   /**
    * Broadcast model update
    */
-  modelUpdated(model: string, id: string | number, data: unknown): void {
+  modelUpdated<TData = unknown>(model: string, id: string | number, data: TData): void {
     this.broadcaster.send(`model.${model}.${id}`, 'updated', data)
   }
 
   /**
    * Broadcast model created
    */
-  modelCreated(model: string, data: unknown): void {
+  modelCreated<TData = unknown>(model: string, data: TData): void {
     this.broadcaster.send(`model.${model}`, 'created', data)
   }
 
