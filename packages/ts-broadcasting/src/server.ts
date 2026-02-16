@@ -87,7 +87,7 @@ export interface ServerConfig extends BroadcastConfig {
 }
 
 export class BroadcastServer {
-  private server?: BunServer
+  private server?: BunServer<WebSocketData>
   private connections: Map<string, ServerWebSocket<WebSocketData>> = new Map()
   private config: ServerConfig
 

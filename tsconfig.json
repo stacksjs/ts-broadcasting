@@ -23,5 +23,14 @@
     "verbatimModuleSyntax": true,
     "skipDefaultLibCheck": true,
     "skipLibCheck": true
-  }
+  },
+  "exclude": [
+    "node_modules",
+    "dist",
+    "**/dist",
+    "pickier.config.ts",
+    "packages/ts-broadcasting/src/client/react.tsx",
+    "packages/ts-broadcasting/src/client/svelte.ts",
+    "packages/ts-broadcasting/src/client/vue.ts"
+  ]
 }

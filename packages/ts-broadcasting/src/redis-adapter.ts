@@ -33,6 +33,10 @@ export class RedisAdapter {
   private serverId: string
   private messageHandlers: Set<(message: RedisMessage) => void> = new Set()
 
+  get client(): RedisClient {
+    return this.publisher
+  }
+
   constructor(config: RedisConfig) {
     this.serverId = crypto.randomUUID()
 

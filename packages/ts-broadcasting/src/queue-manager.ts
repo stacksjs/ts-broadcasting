@@ -52,7 +52,8 @@ let bunQueueAvailable = false
 let getQueueManager: (() => QueueManager) | null = null
 
 try {
-  const bunQueue = await import('bun-queue')
+  // eslint-disable-next-line ts/no-require-imports
+  const bunQueue = await (import('bun-queue' as string) as Promise<{ getQueueManager: () => QueueManager }>)
   getQueueManager = bunQueue.getQueueManager
   bunQueueAvailable = true
 }

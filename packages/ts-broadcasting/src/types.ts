@@ -57,7 +57,7 @@ export type Compressor =
 // Note: BroadcastServer class is defined in server.ts with full implementation
 // This interface defines the minimal contract for type checking
 export interface BroadcastServerContract {
-  server: BunServer
+  server: BunServer<WebSocketData>
   start: () => Promise<void>
   stop: () => Promise<void>
   broadcast: (channel: string, event: string, data: unknown, excludeSocketId?: string) => void
