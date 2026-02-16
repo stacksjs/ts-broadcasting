@@ -441,12 +441,14 @@ export class SecurityManager {
 
     if (typeof data === 'string') {
       // Basic XSS prevention
-      return data
+      const sanitized = data
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#x27;')
+        .replace(/\x27/g, '&#x27;')
         .replace(/\//g, '&#x2F;')
+
+      return sanitized
     }
 
     if (Array.isArray(data)) {
