@@ -25,7 +25,7 @@ export interface AuthConfig {
   }
 }
 
-export type AuthCallback = (req: Request) => Promise<User | null> | User | null
+export type AuthCallback = (_req: Request) => Promise<User | null> | User | null
 
 export class AuthenticationManager {
   private callback: AuthCallback | null = null
@@ -259,7 +259,7 @@ export class RateLimiter {
 
 // ==================== Message Validation ====================
 
-export type MessageValidator = (message: unknown) => boolean | string
+export type MessageValidator = (_message: unknown) => boolean | string
 
 export class MessageValidationManager {
   private validators: Set<MessageValidator> = new Set()
@@ -308,7 +308,7 @@ export interface MetricEvent {
   data?: unknown
 }
 
-export type MetricCallback = (event: MetricEvent) => void
+export type MetricCallback = (_event: MetricEvent) => void
 
 export class MonitoringManager {
   private callbacks: Map<string, Set<MetricCallback>> = new Map()

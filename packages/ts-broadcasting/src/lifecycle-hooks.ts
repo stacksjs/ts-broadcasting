@@ -15,7 +15,7 @@ export interface ChannelHookData {
   data?: unknown
 }
 
-export type ChannelHookCallback = (data: ChannelHookData) => void | Promise<void>
+export type ChannelHookCallback = (_data: ChannelHookData) => void | Promise<void>
 
 export class ChannelLifecycleManager {
   private hooks: Map<ChannelLifecycleEvent | 'all', Set<ChannelHookCallback>> = new Map()

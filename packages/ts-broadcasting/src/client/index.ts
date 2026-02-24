@@ -45,10 +45,10 @@ export interface BroadcastClientConfig {
   }
 }
 
-export type EventCallback<T = any> = (data: T) => void
+export type EventCallback<T = any> = (_data: T) => void
 
 export interface ChannelCallbacks {
-  subscription_succeeded?: (data: any) => void
+  subscription_succeeded?: (_data: any) => void
   subscription_error?: (error: any) => void
   [event: string]: EventCallback | undefined
 }
