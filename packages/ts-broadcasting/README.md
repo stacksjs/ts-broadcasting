@@ -192,7 +192,7 @@ export default {
       scheme: 'ws',
       options: {
         idleTimeout: 120,
-        maxPayloadLength: 16 * 1024 * 1024, // 16 MB
+        maxPayloadLength: 16 _ 1024 _ 1024, // 16 MB
         backpressureLimit: 1024 * 1024, // 1 MB
         sendPings: true,
         perMessageDeflate: true,

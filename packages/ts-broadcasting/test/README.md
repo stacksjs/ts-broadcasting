@@ -28,29 +28,39 @@ test/
 
 ### Run all tests
 ```bash
+
 bun test
+
 ```
 
 ### Run specific test suite
 ```bash
+
 bun test test/unit/
 bun test test/integration/
 bun test test/e2e/
+
 ```
 
 ### Run specific test file
 ```bash
+
 bun test test/unit/channels.test.ts
+
 ```
 
 ### Run with coverage
 ```bash
+
 bun test --coverage
+
 ```
 
 ### Watch mode
 ```bash
+
 bun test --watch
+
 ```
 
 ## Test Categories
@@ -152,6 +162,7 @@ Located in `helpers/test-server.ts`:
 Located in `helpers/mock-redis.ts`:
 
 In-memory Redis implementation for testing without actual Redis:
+
 - String operations (get, set, del, incr)
 - Set operations (sadd, srem, smembers)
 - Hash operations (hmset, hgetall)
@@ -170,6 +181,7 @@ Located in `helpers/assertions.ts`:
 
 ### Unit Test Template
 ```typescript
+
 import { beforeEach, describe, expect, it } from 'bun:test'
 
 describe('MyComponent', () => {
@@ -184,10 +196,12 @@ describe('MyComponent', () => {
     expect(result).toBe(expected)
   })
 })
+
 ```
 
 ### Integration Test Template
 ```typescript
+
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test'
 import { cleanupTestServer, createTestServer } from '../helpers/test-server'
 
@@ -208,6 +222,7 @@ describe('MyFeature', () => {
     // Test implementation
   })
 })
+
 ```
 
 ## Test Coverage Goals
@@ -219,6 +234,7 @@ describe('MyFeature', () => {
 ## Continuous Integration
 
 Tests are automatically run on:
+
 - Every commit
 - Pull requests
 - Before releases
@@ -227,19 +243,25 @@ Tests are automatically run on:
 
 ### Enable verbose logging
 ```bash
+
 DEBUG=* bun test
+
 ```
 
 ### Run single test
 ```bash
+
 bun test --test-name-pattern "should connect to broadcast server"
+
 ```
 
 ### Increase timeout for slow tests
 ```typescript
+
 it('slow test', async () => {
   // Test implementation
 }, { timeout: 10000 }) // 10 seconds
+
 ```
 
 ## Best Practices
@@ -257,13 +279,17 @@ it('slow test', async () => {
 ### Port already in use
 Use `port: 0` to get a random available port:
 ```typescript
+
 server = await createTestServer({ port: 0 })
+
 ```
 
 ### Test timeouts
 Increase timeout or check for race conditions:
 ```typescript
+
 await waitFor(() => condition, 5000) // 5 second timeout
+
 ```
 
 ### Flaky tests

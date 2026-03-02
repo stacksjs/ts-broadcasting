@@ -9,11 +9,13 @@ This document summarizes all the improvements and new features added to the ts-b
 **Status:** ✅ Complete
 
 **Files:**
+
 - `src/queue-manager.ts` - Full queue integration with bun-queue
 - Updated `src/broadcaster.ts` - Queue-aware broadcasting
 - Updated `src/server.ts` - Queue manager initialization
 
 **Features:**
+
 - ✅ Reliable message delivery with retry logic
 - ✅ Dead letter queue for failed messages
 - ✅ Delayed broadcast scheduling
@@ -24,6 +26,7 @@ This document summarizes all the improvements and new features added to the ts-b
 - ✅ Distributed locks for job processing
 
 **Usage Example:**
+
 ```typescript
 const server = new BroadcastServer({
   // ... other config
@@ -60,11 +63,13 @@ await server.queueManager.scheduleRecurringBroadcast(
 **Status:** ✅ Complete
 
 **Files:**
+
 - `src/metrics/prometheus.ts` - Full Prometheus exporter
 - `prometheus.yml` - Prometheus configuration
 - Updated `src/server.ts` - `/metrics` endpoint
 
 **Metrics Exported:**
+
 - ✅ Connection metrics (total, active)
 - ✅ Channel metrics (count, subscriptions)
 - ✅ Message metrics (sent, received)
@@ -77,18 +82,20 @@ await server.queueManager.scheduleRecurringBroadcast(
 - ✅ Queue metrics (when enabled)
 
 **Endpoints:**
+
 - `GET /metrics` - Prometheus text format
 - `GET /stats` - JSON format
 
 **Example Output:**
-```
-# HELP broadcasting_connections_total Total connections since server start
-# TYPE broadcasting_connections_total counter
-broadcasting_connections_total 1523
 
-# HELP broadcasting_connections_active Current active connections
-# TYPE broadcasting_connections_active gauge
-broadcasting_connections_active 42
+```
+# HELP broadcasting*connections*total Total connections since server start
+# TYPE broadcasting*connections*total counter
+broadcasting*connections*total 1523
+
+# HELP broadcasting*connections*active Current active connections
+# TYPE broadcasting*connections*active gauge
+broadcasting*connections*active 42
 ```
 
 ---
@@ -98,17 +105,20 @@ broadcasting_connections_active 42
 **Status:** ✅ Complete
 
 **Files:**
+
 - `src/circuit-breaker.ts` - Full circuit breaker implementation
 
 **Features:**
+
 - ✅ Automatic failure detection
-- ✅ Three states: CLOSED, OPEN, HALF_OPEN
+- ✅ Three states: CLOSED, OPEN, HALF*OPEN
 - ✅ Configurable thresholds
 - ✅ Automatic recovery attempts
 - ✅ Per-service circuit breakers
 - ✅ Statistics and monitoring
 
 **Usage Example:**
+
 ```typescript
 import { CircuitBreakerManager } from 'ts-broadcasting'
 
@@ -135,9 +145,11 @@ console.log(stats) // { redis: { state: 'CLOSED', failures: 0, ... } }
 **Status:** ✅ Complete
 
 **Files:**
+
 - `src/message-deduplication.ts` - Deduplication system
 
 **Features:**
+
 - ✅ In-memory deduplication
 - ✅ Redis-backed deduplication for horizontal scaling
 - ✅ Configurable TTL
@@ -146,6 +158,7 @@ console.log(stats) // { redis: { state: 'CLOSED', failures: 0, ... } }
 - ✅ Statistics tracking
 
 **Usage Example:**
+
 ```typescript
 import { MessageDeduplicator } from 'ts-broadcasting'
 
@@ -169,9 +182,11 @@ if (!isDupe) {
 **Status:** ✅ Complete
 
 **Files:**
+
 - `src/client/react.tsx` - React hooks and components
 
 **Hooks Provided:**
+
 - ✅ `useBroadcast()` - Main client connection
 - ✅ `useChannel()` - Public channel subscription
 - ✅ `usePrivateChannel()` - Private channel with whisper
@@ -180,6 +195,7 @@ if (!isDupe) {
 - ✅ `useBroadcastContext()` - Access context
 
 **Usage Example:**
+
 ```tsx
 import { BroadcastProvider, useBroadcastContext, useChannel } from 'ts-broadcasting/client/react'
 
@@ -219,15 +235,18 @@ function ChatRoom() {
 **Status:** ✅ Complete
 
 **Files:**
+
 - `src/client/vue.ts` - Vue 3 composables
 
 **Composables Provided:**
+
 - ✅ `useBroadcast()` - Main client connection
 - ✅ `useChannel()` - Public channel subscription
 - ✅ `usePrivateChannel()` - Private channel with whisper
 - ✅ `usePresence()` - Presence channel with member tracking
 
 **Usage Example:**
+
 ```vue
 <script setup>
 import { useBroadcast, usePresence } from 'ts-broadcasting/client/vue'
@@ -258,15 +277,18 @@ const { members, isSubscribed, whisper } = usePresence(client, 'chat.room1', {
 **Status:** ✅ Complete
 
 **Files:**
+
 - `src/client/svelte.ts` - Svelte stores
 
 **Stores Provided:**
+
 - ✅ `createBroadcastStore()` - Main client connection
 - ✅ `createChannelStore()` - Public channel
 - ✅ `createPrivateChannelStore()` - Private channel
 - ✅ `createPresenceStore()` - Presence channel
 
 **Usage Example:**
+
 ```svelte
 <script>
 import { createBroadcastStore, createPresenceStore } from 'ts-broadcasting/client/svelte'
@@ -295,17 +317,20 @@ const presence = createPresenceStore(broadcast.client, 'chat.room1', {
 **Status:** ✅ Complete
 
 **Files:**
+
 - `Dockerfile` - Production-ready container
 - `docker-compose.yml` - Full stack deployment
 - `prometheus.yml` - Prometheus configuration
 
 **Services Included:**
+
 - ✅ Broadcasting server with health checks
 - ✅ Redis for horizontal scaling and queue
 - ✅ Prometheus for metrics collection
 - ✅ Grafana for visualization
 
 **Usage:**
+
 ```bash
 # Start all services
 docker-compose up -d
@@ -386,7 +411,7 @@ const server = new BroadcastServer({
   auth: {
     enabled: true,
     cookie: {
-      name: 'auth_token',
+      name: 'auth*token',
       secure: true
     }
   },
@@ -421,17 +446,17 @@ await server.start()
 All metrics are available at `GET /metrics` in Prometheus format:
 
 ```
-broadcasting_connections_total
-broadcasting_connections_active
-broadcasting_channels_total
-broadcasting_messages_total
-broadcasting_errors_total
-broadcasting_uptime_seconds
-broadcasting_memory_usage_bytes
-broadcasting_queue_jobs_waiting
-broadcasting_queue_jobs_active
-broadcasting_queue_jobs_completed
-broadcasting_queue_jobs_failed
+broadcasting*connections*total
+broadcasting*connections*active
+broadcasting*channels*total
+broadcasting*messages*total
+broadcasting*errors*total
+broadcasting*uptime*seconds
+broadcasting*memory*usage*bytes
+broadcasting*queue*jobs*waiting
+broadcasting*queue*jobs*active
+broadcasting*queue*jobs*completed
+broadcasting*queue*jobs_failed
 ```
 
 ### Health Checks
@@ -454,6 +479,7 @@ curl http://localhost:6001/metrics
 ### Recommended Production Setup
 
 1. **Deploy with Docker Compose**
+
    ```bash
    docker-compose up -d
    ```
