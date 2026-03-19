@@ -1,5 +1,5 @@
 # Dockerfile for ts-broadcasting server
-FROM oven/bun:1.3.10 as base
+FROM oven/bun:1.3.11 as base
 WORKDIR /app
 
 # Install dependencies
