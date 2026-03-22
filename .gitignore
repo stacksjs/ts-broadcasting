@@ -13,3 +13,4 @@ docs/.vitepress/cache
 packages/ts-broadcasting/bin/broadcast
 .zed
 .cursor
+/pantry
