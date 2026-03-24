@@ -1,7 +1,7 @@
 {
   "name": "ts-broadcasting",
   "type": "module",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "author": "",
   "license": "MIT",
   "keywords": [
@@ -27,6 +27,7 @@
     "test:integration": "bun test test/integration/",
     "test:e2e": "bun test test/e2e/",
     "test:watch": "bun test --watch",
+    "prepublishOnly": "bun --bun build.ts",
     "build": "bun --bun build.ts && bun run compile",
     "compile": "bun build ./bin/cli.ts --compile --minify --outfile bin/broadcast",
     "dev": "bun --watch bin/cli.ts start"

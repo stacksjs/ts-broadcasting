@@ -1,7 +1,7 @@
 {
   "name": "ts-broadcasting",
   "type": "module",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Like our `ts-starter`, but optimized for monorepos.",
   "author": "Chris Breuer <chris@stacksjs.org>",
   "license": "MIT",

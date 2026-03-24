@@ -1,3 +1,13 @@
+[Compare changes](https://github.com/stacksjs/ts-broadcasting/compare/v0.0.2...v0.0.3)
+
+### 🧹 Chores
+
+- release v0.0.3 ([343dfe1](https://github.com/stacksjs/ts-broadcasting/commit/343dfe1)) _(by glennmichael123 <gtorregosa@gmail.com>)_
+
+### Contributors
+
+- _glennmichael123 <gtorregosa@gmail.com>_
+
 [Compare changes](https://github.com/stacksjs/ts-broadcasting/compare/v0.0.1...v0.0.2)
 
 ### 🧹 Chores
