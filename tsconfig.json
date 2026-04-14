@@ -26,6 +26,7 @@
   },
   "exclude": [
     "node_modules",
+    "pantry",
     "dist",
     "**/dist",
     "pickier.config.ts",

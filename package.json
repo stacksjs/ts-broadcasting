@@ -1,8 +1,8 @@
 {
   "name": "ts-broadcasting",
   "type": "module",
-  "version": "0.0.3",
-  "description": "Like our `ts-starter`, but optimized for monorepos.",
+  "version": "0.0.4",
+  "description": "A high-performance, real-time WebSocket broadcasting system for TypeScript, built on Bun.",
   "author": "Chris Breuer <chris@stacksjs.org>",
   "license": "MIT",
   "homepage": "https://github.com/stacksjs/ts-broadcasting#readme",
@@ -32,9 +32,9 @@
     "changelog": "bunx logsmith --verbose",
     "changelog:generate": "bunx logsmith --output CHANGELOG.md",
     "release": "bun --bun run changelog:generate && bunx --bun bumpx prompt --recursive",
-    "dev:docs": "bun --bun vitepress dev docs",
-    "build:docs": "bun --bun vitepress build docs",
-    "preview:docs": "bun --bun vitepress preview docs",
+    "dev:docs": "bun --bun bunpress dev docs",
+    "build:docs": "bun --bun bunpress build docs",
+    "preview:docs": "bun --bun bunpress preview docs",
     "typecheck": "bun --bun tsc --noEmit"
   },
   "devDependencies": {

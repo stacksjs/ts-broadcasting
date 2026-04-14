@@ -1,118 +1,104 @@
 # Install
 
-_This is just an example of the ts-starter docs._
-
-Installing `rpx` is easy. Simply pull it in via your package manager of choice, or download the binary directly.
+Installing `ts-broadcasting` is straightforward. It requires [Bun](https://bun.sh) as its runtime.
 
 ## Package Managers
 
-Choose your package manager of choice:
-
 ::: code-group
 
-```sh [npm]
-npm install --save-dev @stacksjs/rpx
-# npm i -d @stacksjs/rpx
-
-# or, install globally via
-npm i -g @stacksjs/rpx
+```sh [bun]
+bun add ts-broadcasting
 ```
 
-```sh [bun]
-bun install --dev @stacksjs/rpx
-# bun add --dev @stacksjs/rpx
-# bun i -d @stacksjs/rpx
-
-# or, install globally via
-bun add --global @stacksjs/rpx
+```sh [npm]
+npm install ts-broadcasting
 ```
 
 ```sh [pnpm]
-pnpm add --save-dev @stacksjs/rpx
-# pnpm i -d @stacksjs/rpx
-
-# or, install globally via
-pnpm add --global @stacksjs/rpx
+pnpm add ts-broadcasting
 ```
 
 ```sh [yarn]
-yarn add --dev @stacksjs/rpx
-# yarn i -d @stacksjs/rpx
-
-# or, install globally via
-yarn global add @stacksjs/rpx
-```
-
-```sh [brew]
-brew install rpx # coming soon
-```
-
-```sh [pkgx]
-pkgx rpx # coming soon
+yarn add ts-broadcasting
 ```
 
 :::
 
-Read more about how to use it in the Usage section of the documentation.
+## Requirements
 
-## Binaries
+- [Bun](https://bun.sh) v1.0 or later (required as the server runtime)
+- Node.js 18+ (for the client SDK only, if not using Bun)
 
-Choose the binary that matches your platform and architecture:
+## Verify Installation
 
-::: code-group
+After installing, you can verify by starting a simple server:
 
-```sh [macOS (arm64)]
-# Download the binary
-curl -L https://github.com/stacksjs/rpx/releases/download/v0.9.1/rpx-darwin-arm64 -o rpx
+```ts
+import { BroadcastServer } from 'ts-broadcasting'
 
-# Make it executable
-chmod +x rpx
+const server = new BroadcastServer({
+  driver: 'bun',
+  connections: {
+    bun: {
+      driver: 'bun',
+      host: 'localhost',
+      port: 6001,
+    },
+  },
+})
 
-# Move it to your PATH
-mv rpx /usr/local/bin/rpx
+await server.start()
+console.log('Broadcasting server running on ws://localhost:6001')
 ```
 
-```sh [macOS (x64)]
-# Download the binary
-curl -L https://github.com/stacksjs/rpx/releases/download/v0.9.1/rpx-darwin-x64 -o rpx
+Run it with:
 
-# Make it executable
-chmod +x rpx
-
-# Move it to your PATH
-mv rpx /usr/local/bin/rpx
+```bash
+bun run server.ts
 ```
 
-```sh [Linux (arm64)]
-# Download the binary
-curl -L https://github.com/stacksjs/rpx/releases/download/v0.9.1/rpx-linux-arm64 -o rpx
+## CLI Installation
 
-# Make it executable
-chmod +x rpx
+ts-broadcasting includes a CLI binary. After installation, you can use it directly:
 
-# Move it to your PATH
-mv rpx /usr/local/bin/rpx
+```bash
+# Via bunx
+bunx broadcast start
+
+# Or if installed globally
+bun add -g ts-broadcasting
+broadcast start
 ```
 
-```sh [Linux (x64)]
-# Download the binary
-curl -L https://github.com/stacksjs/rpx/releases/download/v0.9.1/rpx-linux-x64 -o rpx
+## Configuration File
 
-# Make it executable
-chmod +x rpx
+Create a `broadcast.config.ts` file in your project root for automatic configuration loading:
 
-# Move it to your PATH
-mv rpx /usr/local/bin/rpx
+```ts
+import type { BroadcastConfig } from 'ts-broadcasting'
+
+const config: BroadcastConfig = {
+  driver: 'bun',
+  default: 'bun',
+  connections: {
+    bun: {
+      driver: 'bun',
+      host: '0.0.0.0',
+      port: 6001,
+      scheme: 'ws',
+    },
+  },
+}
+
+export default config
 ```
 
-```sh [Windows (x64)]
-# Download the binary
-curl -L https://github.com/stacksjs/rpx/releases/download/v0.9.1/rpx-windows-x64.exe -o rpx.exe
+The config file is loaded automatically via `bunfig`. You can also use `realtime.config.ts` as an alias.
 
-# Move it to your PATH (adjust the path as needed)
-move rpx.exe C:\Windows\System32\rpx.exe
-```
+Read more about configuration in the [Configuration](/config) section.
 
-::: tip
-You can also find the `rpx` binaries in GitHub [releases](https://github.com/stacksjs/rpx/releases).
-:::
+## Next Steps
+
+- [Getting Started](/guide/getting-started) - Set up your server and client
+- [Configuration](/config) - Full configuration reference
+- [Usage](/usage) - Common usage patterns

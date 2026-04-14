@@ -6,19 +6,15 @@ Broadcasting and listening to real-time events with ts-broadcasting.
 
 ### Simple Broadcasting
 
-```typescript
-import { Broadcaster } from 'ts-broadcasting'
-
-const broadcaster = new Broadcaster(server)
-
-// Broadcast to single channel
-broadcaster.send('notifications', 'NewNotification', {
+```ts
+// Broadcast to a single channel
+server.broadcaster.send('notifications', 'NewNotification', {
   title: 'Order Shipped',
   message: 'Your order #123 has been shipped',
 })
 
 // Broadcast to multiple channels
-broadcaster.send(
+server.broadcaster.send(
   ['orders', 'admin-dashboard'],
   'OrderUpdated',
   { orderId: 123, status: 'shipped' },
@@ -27,43 +23,75 @@ broadcaster.send(
 
 ### Using Event Objects
 
-```typescript
+Event objects implement the `BroadcastEvent` interface:
+
+```ts
+import type { BroadcastEvent } from 'ts-broadcasting'
+
+class OrderShipped implements BroadcastEvent {
+  constructor(private order: { id: number, trackingNumber: string }) {}
+
+  shouldBroadcast() { return true }
+  broadcastOn() { return `private-orders.${this.order.id}` }
+  broadcastAs() { return 'OrderShipped' }
+  broadcastWith() {
+    return {
+      orderId: this.order.id,
+      trackingNumber: this.order.trackingNumber,
+    }
+  }
+}
+
+await server.broadcaster.broadcast(new OrderShipped(order))
+```
+
+The `BroadcastEvent` interface supports:
+
+| Method | Required | Description |
+|--------|----------|-------------|
+| `shouldBroadcast()` | Yes | Return `true` to broadcast, `false` to skip |
+| `broadcastOn()` | Yes | Channel name(s) to broadcast to |
+| `broadcastAs()` | No | Custom event name (defaults to class name) |
+| `broadcastWith()` | No | Custom event data (defaults to `{}`) |
+| `broadcastWhen()` | No | Additional condition check |
+| `broadcastQueue()` | No | Queue name for deferred broadcasting |
+| `broadcastConnection()` | No | Specific connection to use |
+
+### Using `createEvent` Helper
+
+```ts
 import { createEvent } from 'ts-broadcasting'
 
 const event = createEvent(
-  'private-user.123',  // Channel
-  'OrderShipped',      // Event name
-  {                    // Data
+  'private-user.123',
+  'OrderShipped',
+  {
     orderId: 456,
     trackingNumber: 'ABC123',
-    estimatedDelivery: '2024-01-15',
+    estimatedDelivery: '2025-01-15',
   },
 )
 
-await broadcaster.broadcast(event)
+await server.broadcaster.broadcast(event)
 ```
 
 ### Broadcast to Others
 
 Exclude the sender from receiving the broadcast:
 
-```typescript
-// In a message handler
-server.on('message', (ws, message) => {
-  if (message.event === 'typing') {
-    // Broadcast to everyone except sender
-    broadcaster.toOthers(ws.data.socketId)
-      .send('chat.general', 'UserTyping', {
-        userId: ws.data.userId,
-        userName: ws.data.userName,
-      })
-  }
-})
+```ts
+server.broadcaster.toOthers(ws.data.socketId)
+  .send('chat.general', 'UserTyping', {
+    userId: ws.data.user?.id,
+    userName: ws.data.user?.name,
+  })
 ```
 
 ### Anonymous Events
 
-```typescript
+Fluent API for building and sending events:
+
+```ts
 import { AnonymousEvent } from 'ts-broadcasting'
 
 new AnonymousEvent('notifications')
@@ -72,14 +100,21 @@ new AnonymousEvent('notifications')
     type: 'maintenance',
     message: 'Server will restart in 5 minutes',
   })
-  .send(broadcaster)
+  .send(server.broadcaster)
+
+// Exclude sender
+new AnonymousEvent('chat.room1')
+  .as('NewMessage')
+  .with({ text: 'Hello!' })
+  .toOthers(socketId)
+  .send(server.broadcaster)
 ```
 
 ## Listening for Events
 
 ### Basic Listening
 
-```typescript
+```ts
 // Client-side
 const channel = client.channel('notifications')
 
@@ -90,7 +125,7 @@ channel.listen('NewNotification', (data) => {
 
 ### Multiple Event Listeners
 
-```typescript
+```ts
 const channel = client.channel('orders')
 
 channel
@@ -101,198 +136,271 @@ channel
 
 ### Stop Listening
 
-```typescript
+```ts
 // Stop listening to specific event
 channel.stopListening('OrderCreated')
+
+// Stop listening to specific callback
+channel.stopListening('OrderCreated', specificHandler)
 
 // Leave channel entirely
 client.leave('orders')
 ```
 
+### Subscription Events
+
+```ts
+channel.subscribed(() => {
+  console.log('Successfully subscribed')
+})
+
+channel.error((error) => {
+  console.error('Subscription failed:', error)
+})
+```
+
 ## Event Acknowledgments
 
-Ensure events are received:
+Ensure events are received by enabling acknowledgments:
 
-```typescript
-import { AcknowledgmentManager } from 'ts-broadcasting'
+```ts
+// Server config
+const server = new BroadcastServer({
+  // ...
+  acknowledgments: {
+    enabled: true,
+    timeout: 5000,      // 5 seconds to acknowledge
+    retryAttempts: 3,
+  },
+})
 
-const ackManager = new AcknowledgmentManager({
-  timeout: 5000,  // 5 seconds to acknowledge
-  retries: 3,     // Retry 3 times
+// Client with acknowledgments
+const client = new BroadcastClient({
+  // ...
+  acknowledgments: {
+    enabled: true,
+    timeout: 5000,
+  },
 })
 
 // Send with acknowledgment
-const result = await ackManager.sendWithAck(
-  broadcaster,
-  'critical-events',
-  'PaymentProcessed',
-  { orderId: 123, amount: 99.99 },
+const acked = await client.sendWithAck(
+  { event: 'critical-event', channel: 'payments', data: { amount: 99.99 } },
+  true, // requireAck
 )
-
-if (result.acknowledged) {
-  console.log('Event received by client')
-}
-else {
-  console.log('Event delivery failed')
-}
 ```
 
 ## Batch Operations
 
-Send multiple events efficiently:
+Subscribe to multiple channels efficiently:
 
-```typescript
-import { BatchOperations } from 'ts-broadcasting'
+```ts
+// Client-side batch subscribe
+const result = await client.batchSubscribe([
+  'channel-1',
+  'channel-2',
+  'channel-3',
+])
+// result: { succeeded: ['channel-1', ...], failed: { ... } }
 
-const batch = new BatchOperations(broadcaster)
+// Batch unsubscribe
+await client.batchUnsubscribe(['channel-1', 'channel-2'])
+```
 
-// Queue events
-batch.add('channel-1', 'Event1', { data: 1 })
-batch.add('channel-2', 'Event2', { data: 2 })
-batch.add('channel-3', 'Event3', { data: 3 })
+Server-side batch config:
 
-// Send all at once
-await batch.flush()
+```ts
+const server = new BroadcastServer({
+  // ...
+  batch: {
+    enabled: true,
+    maxBatchSize: 50,
+    debounceMs: 100,
+  },
+})
 ```
 
 ## Queue Manager
 
 Queue broadcasts for reliable delivery:
 
-```typescript
-import { BroadcastQueueManager, BroadcastJob } from 'ts-broadcasting'
+```ts
+import { BroadcastJob, DelayedBroadcastJob, RecurringBroadcastJob } from 'ts-broadcasting'
 
-const queue = new BroadcastQueueManager({
-  driver: 'redis',
-  redis: { host: 'localhost', port: 6379 },
+// Enable queue in server config
+const server = new BroadcastServer({
+  // ...
+  queue: {
+    enabled: true,
+    defaultQueue: 'broadcasts',
+    retry: {
+      attempts: 3,
+      backoff: { type: 'exponential', delay: 1000 },
+    },
+    deadLetter: { enabled: true, maxRetries: 5 },
+  },
 })
 
 // Queue a broadcast
-await queue.push(new BroadcastJob({
-  channels: ['notifications'],
-  event: 'NewNotification',
-  data: { message: 'Hello' },
-}))
+await server.queueManager?.queueBroadcast(
+  ['notifications'],
+  'NewNotification',
+  { message: 'Hello' },
+)
 
 // Delayed broadcast
-await queue.push(new DelayedBroadcastJob({
-  channels: ['reminders'],
-  event: 'Reminder',
-  data: { message: 'Don\'t forget!' },
-  delay: 60000, // 1 minute delay
-}))
+await server.queueManager?.scheduleDelayedBroadcast(
+  ['reminders'],
+  'Reminder',
+  { message: 'Don\'t forget!' },
+  60000, // 1 minute delay
+)
 
 // Recurring broadcast
-await queue.push(new RecurringBroadcastJob({
-  channels: ['heartbeat'],
-  event: 'Ping',
-  data: { timestamp: Date.now() },
-  interval: 30000, // Every 30 seconds
-}))
+await server.queueManager?.scheduleRecurringBroadcast(
+  ['heartbeat'],
+  'Ping',
+  async () => ({ timestamp: Date.now() }),
+  '*/30 * * * * *', // Every 30 seconds
+)
+```
+
+Events can also specify a queue via the `broadcastQueue()` method:
+
+```ts
+class OrderShipped implements BroadcastEvent {
+  shouldBroadcast() { return true }
+  broadcastOn() { return 'orders' }
+  broadcastQueue() { return 'high-priority' }
+  // ...
+}
 ```
 
 ## Message Deduplication
 
 Prevent duplicate message processing:
 
-```typescript
+```ts
 import { MessageDeduplicator } from 'ts-broadcasting'
 
 const deduplicator = new MessageDeduplicator({
-  ttl: 60000, // Keep message IDs for 1 minute
+  enabled: true,
+  ttl: 60000,     // Keep IDs for 1 minute
+  maxSize: 10000, // Max tracked messages
 })
 
 // Check before processing
-const messageId = 'unique-message-id'
-if (!deduplicator.isDuplicate(messageId)) {
-  deduplicator.mark(messageId)
+const isDuplicate = await deduplicator.isDuplicate('channel', 'event', data, messageId)
+if (!isDuplicate) {
   // Process message
 }
 ```
 
 ## Webhooks
 
-Trigger webhooks on events:
+Trigger HTTP webhooks on broadcast events:
 
-```typescript
-import { WebhookManager } from 'ts-broadcasting'
-
-const webhooks = new WebhookManager()
-
-// Register webhook
-webhooks.register('order-events', {
-  url: 'https://api.example.com/webhooks/orders',
-  events: ['OrderCreated', 'OrderShipped', 'OrderDelivered'],
-  secret: 'webhook-secret',
+```ts
+const server = new BroadcastServer({
+  // ...
+  webhooks: {
+    enabled: true,
+    retryAttempts: 3,
+    retryDelay: 1000,
+    timeout: 5000,
+    secret: 'webhook-secret',
+    endpoints: [
+      {
+        url: 'https://api.example.com/webhooks/broadcasting',
+        events: ['connection', 'disconnection', 'subscribe', 'unsubscribe', 'broadcast'],
+        headers: { 'X-Custom-Header': 'value' },
+        method: 'POST',
+      },
+    ],
+  },
 })
 
-// Trigger webhook on broadcast
-server.on('broadcast', (channel, event, data) => {
-  webhooks.trigger(event, data)
+// Register additional endpoints at runtime
+server.webhooks?.register({
+  url: 'https://api.example.com/webhooks/orders',
+  events: ['broadcast'],
 })
 ```
 
+Supported webhook events: `connection`, `disconnection`, `subscribe`, `unsubscribe`, `broadcast`, `presence_join`, `presence_leave`, `client_event`.
+
 ## Encryption
 
-Encrypt sensitive broadcasts:
+Encrypt sensitive broadcasts with AES-256-GCM:
 
-```typescript
-import { EncryptionManager } from 'ts-broadcasting'
-
-const encryption = new EncryptionManager({
-  key: 'your-encryption-key',
-  algorithm: 'aes-256-gcm',
+```ts
+// Server-side
+const server = new BroadcastServer({
+  // ...
+  encryption: {
+    enabled: true,
+    algorithm: 'aes-256-gcm',
+    keyRotationInterval: 86400000, // 24 hours
+  },
 })
 
-// Encrypt data before broadcasting
-const encryptedData = encryption.encrypt({
-  creditCard: '4111111111111111',
-  cvv: '123',
-})
+// Set channel-specific encryption keys
+await server.encryption?.generateChannelKey('private-payments')
 
-broadcaster.send('private-payment.123', 'PaymentData', encryptedData)
+// Encrypt data
+const encrypted = await server.encryption?.encrypt('private-payments', sensitiveData)
 
-// Client decrypts on receive
-channel.listen('PaymentData', (encryptedData) => {
-  const data = encryption.decrypt(encryptedData)
-  console.log(data.creditCard)
+// Decrypt data
+const decrypted = await server.encryption?.decrypt('private-payments', encrypted)
+```
+
+Client-side encryption:
+
+```ts
+const client = new BroadcastClient({
+  // ...
+  encryption: {
+    enabled: true,
+    keys: {
+      'private-payments': 'your-channel-key',
+    },
+  },
 })
 ```
 
 ## Lifecycle Hooks
 
-Hook into broadcast lifecycle:
+Hook into broadcast lifecycle events:
 
-```typescript
-import { LifecycleHooks } from 'ts-broadcasting'
+```ts
+const lifecycle = server.lifecycle!
 
-const hooks = new LifecycleHooks()
-
-// Before broadcast
-hooks.beforeBroadcast(async (channel, event, data) => {
-  console.log(`Broadcasting ${event} to ${channel}`)
-  // Modify data if needed
-  return { ...data, timestamp: Date.now() }
+lifecycle.on('created', (data) => {
+  console.log(`Channel ${data.channel} created by ${data.socketId}`)
 })
 
-// After broadcast
-hooks.afterBroadcast(async (channel, event, data, result) => {
-  console.log(`Broadcast complete: ${result.recipientCount} received`)
+lifecycle.on('subscribed', (data) => {
+  console.log(`Subscribed to ${data.channel}, ${data.subscriberCount} total`)
 })
 
-// On error
-hooks.onError(async (error, channel, event) => {
-  console.error(`Broadcast failed: ${error.message}`)
+lifecycle.on('unsubscribed', (data) => {
+  console.log(`Unsubscribed from ${data.channel}`)
 })
 
-server.use(hooks)
+lifecycle.on('empty', (data) => {
+  console.log(`Channel ${data.channel} has no subscribers`)
+})
+
+lifecycle.on('destroyed', (data) => {
+  console.log(`Channel ${data.channel} destroyed`)
+})
 ```
 
-## Event Types
+## Typed Events
 
-### Typed Events with TypeScript
+### TypeScript Generics
 
-```typescript
+```ts
 interface OrderEvent {
   orderId: number
   status: 'pending' | 'shipped' | 'delivered'
@@ -305,36 +413,32 @@ interface ChatMessage {
   room: string
 }
 
-// Type-safe broadcasting
-function broadcastOrderUpdate(order: OrderEvent) {
-  broadcaster.send('orders', 'OrderUpdated', order)
-}
-
 // Type-safe listening
-channel.listen<ChatMessage>('NewMessage', (data) => {
-  console.log(`${data.userId}: ${data.message}`)
+client.channel<ChatMessage>('chat')
+  .listen('NewMessage', (data) => {
+    // data is typed as ChatMessage
+    console.log(`${data.userId}: ${data.message}`)
+  })
+```
+
+## Client Events (Whisper)
+
+Clients can send events directly to other subscribers on private/presence channels:
+
+```ts
+// Send a client event (automatically prefixed with 'client-')
+client.private('chat.room1').whisper('typing', { typing: true })
+
+// Listen for whispered events
+client.private('chat.room1').listenForWhisper('typing', (data) => {
+  console.log('User is typing:', data)
 })
 ```
 
-## Client Events
-
-Allow clients to trigger events:
-
-```typescript
-// Server: Enable client events for channel
-server.channel('presence-chat.{roomId}', async (ws, params) => {
-  return {
-    id: ws.data.userId,
-    name: ws.data.userName,
-    canBroadcast: true, // Allow client events
-  }
-})
-
-// Client: Trigger event
-channel.trigger('typing', { userId: currentUserId })
-```
+Client events are only allowed on private and presence channels. They are broadcast to other subscribers but not to the sender.
 
 ## Next Steps
 
 - [Channels](/guide/channels) - Channel types
 - [Laravel Echo](/guide/echo) - Echo compatibility
+- [Advanced Features](/advanced/redis) - Redis, metrics, and more

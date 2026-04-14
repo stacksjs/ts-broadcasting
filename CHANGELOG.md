@@ -1,3 +1,34 @@
+[Compare changes](https://github.com/stacksjs/ts-broadcasting/compare/v0.0.3...v0.0.4)
+
+### 🐛 Bug Fixes
+
+- exclude pantry dir from typecheck ([9e6698e](https://github.com/stacksjs/ts-broadcasting/commit/9e6698e)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+### 🧹 Chores
+
+- release v0.0.4 ([398d743](https://github.com/stacksjs/ts-broadcasting/commit/398d743)) _(by Chris <chrisbreuer93@gmail.com>)_
+- update lockfile ([281456a](https://github.com/stacksjs/ts-broadcasting/commit/281456a)) _(by Chris <chrisbreuer93@gmail.com>)_
+- wip ([9ea062a](https://github.com/stacksjs/ts-broadcasting/commit/9ea062a)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+### Contributors
+
+- _Chris <chrisbreuer93@gmail.com>_
+
+[Compare changes](https://github.com/stacksjs/ts-broadcasting/compare/v0.0.3...HEAD)
+
+### 🐛 Bug Fixes
+
+- exclude pantry dir from typecheck ([9e6698e](https://github.com/stacksjs/ts-broadcasting/commit/9e6698e)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+### 🧹 Chores
+
+- update lockfile ([281456a](https://github.com/stacksjs/ts-broadcasting/commit/281456a)) _(by Chris <chrisbreuer93@gmail.com>)_
+- wip ([9ea062a](https://github.com/stacksjs/ts-broadcasting/commit/9ea062a)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+### Contributors
+
+- _Chris <chrisbreuer93@gmail.com>_
+
 [Compare changes](https://github.com/stacksjs/ts-broadcasting/compare/v0.0.2...v0.0.3)
 
 ### 🧹 Chores
