@@ -294,10 +294,11 @@ const exporter = new PrometheusExporter(server)
 ```
 
 Available metrics:
-- `broadcasting_connections_total` - Total connections
-- `broadcasting_channels_total` - Active channels
-- `broadcasting_messages_total` - Messages sent
-- `broadcasting_errors_total` - Errors
+
+- `broadcasting*connections*total` - Total connections
+- `broadcasting*channels*total` - Active channels
+- `broadcasting*messages*total` - Messages sent
+- `broadcasting*errors*total` - Errors
 
 ## Error Handling
 
