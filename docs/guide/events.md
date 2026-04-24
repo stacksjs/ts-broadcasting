@@ -327,7 +327,7 @@ server.webhooks?.register({
 })
 ```
 
-Supported webhook events: `connection`, `disconnection`, `subscribe`, `unsubscribe`, `broadcast`, `presence_join`, `presence_leave`, `client_event`.
+Supported webhook events: `connection`, `disconnection`, `subscribe`, `unsubscribe`, `broadcast`, `presence*join`, `presence*leave`, `client_event`.
 
 ## Encryption
 

@@ -4,7 +4,7 @@
 
 ts-broadcasting is a high-performance, real-time WebSocket broadcasting system for TypeScript, built on Bun. It brings Laravel-style broadcasting to the TypeScript ecosystem with a clean, type-safe API.
 
-## Why ts-broadcasting?
+## Why ts-broadcasting
 
 Real-time communication is a core requirement for modern applications: live chat, notifications, collaborative editing, dashboards, and more. While solutions like Pusher and Ably exist, they come with per-message pricing and vendor lock-in. Self-hosted alternatives like Laravel Echo Server are Node.js-based and lack TypeScript-first design.
 

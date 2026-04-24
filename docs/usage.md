@@ -1,6 +1,6 @@
 # Usage
 
-There are two main ways to use ts-broadcasting: as a **server** for hosting WebSocket connections and broadcasting events, and as a **client** for subscribing to channels and listening for events.
+There are two main ways to use ts-broadcasting: as a **server**for hosting WebSocket connections and broadcasting events, and as a**client** for subscribing to channels and listening for events.
 
 ## Server
 

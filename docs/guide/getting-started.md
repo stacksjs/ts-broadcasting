@@ -341,14 +341,14 @@ server.auth?.authenticate(async (req) => {
 When enabled, metrics are available at `GET /metrics`:
 
 ```
-broadcasting_connections_total
-broadcasting_connections_active
-broadcasting_channels_total
-broadcasting_messages_total
-broadcasting_messages_received_total
-broadcasting_errors_total
-broadcasting_uptime_seconds
-broadcasting_memory_usage_bytes
+broadcasting*connections*total
+broadcasting*connections*active
+broadcasting*channels*total
+broadcasting*messages*total
+broadcasting*messages*received*total
+broadcasting*errors*total
+broadcasting*uptime*seconds
+broadcasting*memory*usage*bytes
 ```
 
 ## Next Steps

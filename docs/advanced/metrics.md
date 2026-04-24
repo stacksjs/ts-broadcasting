@@ -49,10 +49,14 @@ Add ts-broadcasting as a scrape target in your `prometheus.yml`:
 
 ```yaml
 scrape_configs:
+
   - job_name: 'ts-broadcasting'
+
     scrape_interval: 15s
     static_configs:
+
       - targets: ['localhost:6001']
+
     metrics_path: '/metrics'
 ```
 
