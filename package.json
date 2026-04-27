@@ -50,5 +50,9 @@
       }
     },
     "commit-msg": "bunx gitlint --edit .git/COMMIT_EDITMSG"
+  },
+  "dependencies": {
+    "@stacksjs/clarity": "^0.3.28",
+    "bunfig": "^0.15.8"
   }
 }
