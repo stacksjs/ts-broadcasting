@@ -457,9 +457,9 @@ window.Echo.private('user.123')
   })
 
 window.Echo.join('chat.room.1')
-  .here((users) => { /* ... */ })
-  .joining((user) => { /* ... */ })
-  .leaving((user) => { /* ... */ })
+  .here((users) => { /_ ... _/ })
+  .joining((user) => { /_ ... _/ })
+  .leaving((user) => { /_ ... _/ })
 ```
 
 ## Next Steps

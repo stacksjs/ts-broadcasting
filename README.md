@@ -215,17 +215,17 @@ const config: BroadcastConfig = {
       host: '127.0.0.1',
       port: 8080,
       scheme: 'ws',
-      key: process.env.REVERB_APP_KEY,
-      secret: process.env.REVERB_APP_SECRET,
-      appId: process.env.REVERB_APP_ID,
+      key: process.env.REVERB*APP*KEY,
+      secret: process.env.REVERB*APP*SECRET,
+      appId: process.env.REVERB*APP*ID,
     },
 
     pusher: {
       driver: 'pusher',
-      key: process.env.PUSHER_APP_KEY,
-      secret: process.env.PUSHER_APP_SECRET,
-      appId: process.env.PUSHER_APP_ID,
-      cluster: process.env.PUSHER_APP_CLUSTER || 'mt1',
+      key: process.env.PUSHER*APP*KEY,
+      secret: process.env.PUSHER*APP*SECRET,
+      appId: process.env.PUSHER*APP*ID,
+      cluster: process.env.PUSHER*APP*CLUSTER || 'mt1',
       useTLS: true,
     },
   },
@@ -342,7 +342,7 @@ The server exposes these HTTP endpoints:
 
 | Type | Prefix | Auth Required | Tracks Members |
 |------|--------|--------------|----------------|
-| Public | _(none)_ | No | No |
+| Public | *(none)* | No | No |
 | Private | `private-` | Yes | No |
 | Presence | `presence-` | Yes | Yes |
 
