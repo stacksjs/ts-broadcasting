@@ -1,3 +1,15 @@
+[Compare changes](https://github.com/stacksjs/ts-broadcasting/compare/v0.0.4...v0.0.5)
+
+### 🧹 Chores
+
+- release v0.0.5 ([618eac1](https://github.com/stacksjs/ts-broadcasting/commit/618eac1)) _(by Chris <chrisbreuer93@gmail.com>)_
+- bump @stacksjs/clarity + bunfig ([bcd4eef](https://github.com/stacksjs/ts-broadcasting/commit/bcd4eef)) _(by Chris <chrisbreuer93@gmail.com>)_
+- update docs ([c899087](https://github.com/stacksjs/ts-broadcasting/commit/c899087)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+### Contributors
+
+- _Chris <chrisbreuer93@gmail.com>_
+
 [Compare changes](https://github.com/stacksjs/ts-broadcasting/compare/v0.0.3...v0.0.4)
 
 ### 🐛 Bug Fixes
