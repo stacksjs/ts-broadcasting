@@ -55,6 +55,13 @@ import { RedisAdapter } from './redis-adapter'
 import { WebhookManager } from './webhooks'
 
 export interface ServerConfig extends BroadcastConfig {
+  /**
+   * Convenience bind address used when no named `connections` entry is
+   * supplied — lets `new BroadcastServer({ host, port })` work without the
+   * full `connections`/`default` shape.
+   */
+  host?: string
+  port?: number
   redis?: RedisConfig
   auth?: AuthConfig
   rateLimit?: RateLimitConfig
@@ -243,13 +250,14 @@ export class BroadcastServer {
       }
     }
 
+    // Resolve the bind address from the named connection, then top-level
+    // host/port, then sensible defaults. Previously a missing `connections`
+    // entry threw an opaque "No connection configuration found"; now
+    // `new BroadcastServer({ host, port })` (and a zero-config server) just
+    // work, while the `connections`/`default` shape keeps taking precedence.
     const connectionConfig = this.config.connections?.[this.config.default || 'bun']
-    if (!connectionConfig) {
-      throw new Error('No connection configuration found')
-    }
-
-    const host = connectionConfig.host || '0.0.0.0'
-    const port = connectionConfig.port ?? 6001
+    const host = connectionConfig?.host ?? this.config.host ?? '0.0.0.0'
+    const port = connectionConfig?.port ?? this.config.port ?? 6001
 
     this.server = Bun.serve({
       hostname: host,
@@ -330,12 +338,12 @@ export class BroadcastServer {
         },
 
         // Apply connection options
-        idleTimeout: connectionConfig.options?.idleTimeout,
-        maxPayloadLength: connectionConfig.options?.maxPayloadLength,
-        backpressureLimit: connectionConfig.options?.backpressureLimit,
-        closeOnBackpressureLimit: connectionConfig.options?.closeOnBackpressureLimit,
-        sendPings: connectionConfig.options?.sendPings,
-        perMessageDeflate: connectionConfig.options?.perMessageDeflate,
+        idleTimeout: connectionConfig?.options?.idleTimeout,
+        maxPayloadLength: connectionConfig?.options?.maxPayloadLength,
+        backpressureLimit: connectionConfig?.options?.backpressureLimit,
+        closeOnBackpressureLimit: connectionConfig?.options?.closeOnBackpressureLimit,
+        sendPings: connectionConfig?.options?.sendPings,
+        perMessageDeflate: connectionConfig?.options?.perMessageDeflate,
       },
     })
 
