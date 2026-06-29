@@ -1,3 +1,48 @@
+[Compare changes](https://github.com/stacksjs/ts-broadcasting/compare/v0.0.5...v0.0.6)
+
+## 🐛 Bug Fixes
+
+- **server**: resolve host/port with sensible fallbacks ([1c9ac99](https://github.com/stacksjs/ts-broadcasting/commit/1c9ac99)) _(by Chris <chrisbreuer93@gmail.com>)_
+- **scripts**: stop double-generating CHANGELOG on release ([aa3b991](https://github.com/stacksjs/ts-broadcasting/commit/aa3b991)) _(by Glenn Michael Torregosa <gtorregosa@gmail.com>)_
+- add setup-bun to publish-commit job ([e4f4d83](https://github.com/stacksjs/ts-broadcasting/commit/e4f4d83)) _(by glennmichael123 <gtorregosa@gmail.com>)_
+
+## 🤖 Continuous Integration
+
+- **buddy-bot**: add daily cleanup cron to workflow ([f6ae1e8](https://github.com/stacksjs/ts-broadcasting/commit/f6ae1e8)) _(by Glenn Michael Torregosa <gtorregosa@gmail.com>)_
+- **buddy-bot**: regenerate workflow from current template ([cfb363f](https://github.com/stacksjs/ts-broadcasting/commit/cfb363f)) _(by Glenn Michael Torregosa <gtorregosa@gmail.com>)_
+- drop redundant setup-bun (pantry installs bun via deps.yaml) ([31455b3](https://github.com/stacksjs/ts-broadcasting/commit/31455b3)) _(by glennmichael123 <gtorregosa@gmail.com>)_
+
+## 🧹 Chores
+
+- release v0.0.6 ([ac4ed36](https://github.com/stacksjs/ts-broadcasting/commit/ac4ed36)) _(by Chris <chrisbreuer93@gmail.com>)_
+- add release:patch/minor/major scripts ([43ada1f](https://github.com/stacksjs/ts-broadcasting/commit/43ada1f)) _(by Chris <chrisbreuer93@gmail.com>)_
+- **deps**: refresh bun.lock to pick up pickier 0.1.35 ([4a2b2b5](https://github.com/stacksjs/ts-broadcasting/commit/4a2b2b5)) _(by glennmichael123 <gtorregosa@gmail.com>)_
+- **deps**: refresh bun.lock to pick up pickier 0.1.33 ([9c10b57](https://github.com/stacksjs/ts-broadcasting/commit/9c10b57)) _(by glennmichael123 <gtorregosa@gmail.com>)_
+- **deps**: refresh bun.lock to pick up @stacksjs/logsmith 0.2.3 ([d0723c6](https://github.com/stacksjs/ts-broadcasting/commit/d0723c6)) _(by glennmichael123 <gtorregosa@gmail.com>)_
+- **deps**: refresh bun.lock to pick up buddy-bot 0.9.20 ([6800099](https://github.com/stacksjs/ts-broadcasting/commit/6800099)) _(by glennmichael123 <gtorregosa@gmail.com>)_
+- **deps**: bump better-dx to ^0.2.15 ([7e98d80](https://github.com/stacksjs/ts-broadcasting/commit/7e98d80)) _(by glennmichael123 <gtorregosa@gmail.com>)_
+- refresh bun.lock to pick up bun-plugin-dtsx@0.9.18 ([5e54fd4](https://github.com/stacksjs/ts-broadcasting/commit/5e54fd4)) _(by glennmichael123 <gtorregosa@gmail.com>)_
+- refresh bun.lock and apply pickier --fix ([ba6253e](https://github.com/stacksjs/ts-broadcasting/commit/ba6253e)) _(by glennmichael123 <gtorregosa@gmail.com>)_
+- refresh bun.lock ([9dc4069](https://github.com/stacksjs/ts-broadcasting/commit/9dc4069)) _(by glennmichael123 <gtorregosa@gmail.com>)_
+- lint:fix ([1adc5e6](https://github.com/stacksjs/ts-broadcasting/commit/1adc5e6)) _(by glennmichael123 <gtorregosa@gmail.com>)_
+- refresh bun.lock to pick up latest pickier ([9fd2339](https://github.com/stacksjs/ts-broadcasting/commit/9fd2339)) _(by glennmichael123 <gtorregosa@gmail.com>)_
+- fresh install to pick up dtsx 0.9.14 and bunfig 0.15.9 ([22b9069](https://github.com/stacksjs/ts-broadcasting/commit/22b9069)) _(by glennmichael123 <gtorregosa@gmail.com>)_
+- fix lint errors ([192bf9a](https://github.com/stacksjs/ts-broadcasting/commit/192bf9a)) _(by glennmichael123 <gtorregosa@gmail.com>)_
+- fresh install to pick up pickier 0.1.21 ([0fefbed](https://github.com/stacksjs/ts-broadcasting/commit/0fefbed)) _(by glennmichael123 <gtorregosa@gmail.com>)_
+- gitignore pantry directory ([791b22f](https://github.com/stacksjs/ts-broadcasting/commit/791b22f)) _(by glennmichael123 <gtorregosa@gmail.com>)_
+- merge and resolve conflict ([71fb8bd](https://github.com/stacksjs/ts-broadcasting/commit/71fb8bd)) _(by glennmichael123 <gtorregosa@gmail.com>)_
+- fix lint errors ([2d06d7a](https://github.com/stacksjs/ts-broadcasting/commit/2d06d7a)) _(by glennmichael123 <gtorregosa@gmail.com>)_
+
+## 📄 Miscellaneous
+
+- Merge remote-tracking branch 'origin/main' ([3033a05](https://github.com/stacksjs/ts-broadcasting/commit/3033a05)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## Contributors
+
+- _Chris <chrisbreuer93@gmail.com>_
+- _Glenn Michael Torregosa <gtorregosa@gmail.com>_
+- _glennmichael123 <gtorregosa@gmail.com>_
+
 [Compare changes](https://github.com/stacksjs/ts-broadcasting/compare/v0.0.4...v0.0.5)
 
 ### 🧹 Chores
