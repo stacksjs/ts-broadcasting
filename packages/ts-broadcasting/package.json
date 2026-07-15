@@ -1,7 +1,7 @@
 {
   "name": "ts-broadcasting",
   "type": "module",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "author": "Chris Breuer <chris@stacksjs.org>",
   "license": "MIT",
   "homepage": "https://github.com/stacksjs/ts-broadcasting#readme",

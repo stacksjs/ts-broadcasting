@@ -1,7 +1,7 @@
 {
   "name": "ts-broadcasting",
   "type": "module",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "description": "A high-performance, real-time WebSocket broadcasting system for TypeScript, built on Bun.",
   "author": "Chris Breuer <chris@stacksjs.org>",
   "license": "MIT",
