@@ -47,18 +47,35 @@ interface QueueManager {
   connection(name: string): { queue(name: string): Queue }
 }
 
-// Try to load bun-queue dynamically
-let bunQueueAvailable = false
-let getQueueManager: (() => QueueManager) | null = null
+/**
+ * Load bun-queue, if this project has it.
+ *
+ * On first call, not at module scope. A module-scope `await import()` — even
+ * one wrapped in try/catch to probe an optional dependency — makes this module
+ * top-level-await, which every importer inherits: `bun build --compile`
+ * refuses to bundle a `require()` of anything that transitively contains one,
+ * so a probe here surfaces as an unrelated project's binary build failing
+ * several dependency hops away.
+ *
+ * The only reader is `initializeQueue()`, which is already async, so deferring
+ * costs nothing. The result is cached, including the failure, so a missing
+ * optional dependency is looked for once rather than on every queue.
+ */
+let queueModule: { getQueueManager: () => QueueManager } | null | undefined
 
-try {
-  // eslint-disable-next-line ts/no-require-imports
-  const bunQueue = await (import('bun-queue' as string) as Promise<{ getQueueManager: () => QueueManager }>)
-  getQueueManager = bunQueue.getQueueManager
-  bunQueueAvailable = true
-}
-catch {
-  // bun-queue not installed, queue features will be disabled
+async function loadBunQueue(): Promise<{ getQueueManager: () => QueueManager } | null> {
+  if (queueModule !== undefined)
+    return queueModule
+
+  try {
+    queueModule = await (import('bun-queue' as string) as Promise<{ getQueueManager: () => QueueManager }>)
+  }
+  catch {
+    // Not installed: queue features stay disabled.
+    queueModule = null
+  }
+
+  return queueModule
 }
 
 export interface BroadcastQueueConfig {
@@ -201,7 +218,9 @@ export class BroadcastQueueManager {
    * Initialize the queue system
    */
   private async initializeQueue(): Promise<void> {
-    if (!bunQueueAvailable || !getQueueManager) {
+    const bunQueue = await loadBunQueue()
+
+    if (!bunQueue?.getQueueManager) {
       console.warn('bun-queue is not installed. Queue features will be disabled.')
       this.config.enabled = false
       return
@@ -209,7 +228,7 @@ export class BroadcastQueueManager {
 
     try {
       // Get the queue manager from bun-queue
-      const manager = getQueueManager()
+      const manager = bunQueue.getQueueManager()
 
       // Get or create the queue
       this.queue = manager.connection(this.config.connection).queue(this.config.defaultQueue)
