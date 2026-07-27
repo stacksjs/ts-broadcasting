@@ -1,3 +1,22 @@
+[Compare changes](https://github.com/stacksjs/ts-broadcasting/compare/v0.0.8...v0.0.9)
+
+## 🐛 Bug Fixes
+
+- **queue**: load bun-queue on first use, not at module scope ([d20274e](https://github.com/stacksjs/ts-broadcasting/commit/d20274e)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## 📚 Documentation
+
+- link the community as stacksjs.com/discord ([8790d49](https://github.com/stacksjs/ts-broadcasting/commit/8790d49)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## 🧹 Chores
+
+- release v0.0.9 ([2c52e64](https://github.com/stacksjs/ts-broadcasting/commit/2c52e64)) _(by Chris <chrisbreuer93@gmail.com>)_
+- **deps**: declare bun ^1.3.14 in deps.yaml ([5415438](https://github.com/stacksjs/ts-broadcasting/commit/5415438)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## Contributors
+
+- _Chris <chrisbreuer93@gmail.com>_
+
 [Compare changes](https://github.com/stacksjs/ts-broadcasting/compare/v0.0.5...v0.0.6)
 
 ## 🐛 Bug Fixes
