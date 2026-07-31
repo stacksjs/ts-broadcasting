@@ -56,7 +56,7 @@
   },
   "dependencies": {
     "@stacksjs/clarity": "^0.3.28",
-    "bunfig": "^0.15.8"
+    "bunfig": "^0.15.17"
   },
   "overrides": {
     "typescript": "^7.0.2"
