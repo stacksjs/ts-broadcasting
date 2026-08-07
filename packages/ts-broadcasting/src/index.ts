@@ -3,6 +3,8 @@ export * from './batch-operations'
 export * from './broadcaster'
 export { AnonymousEvent, Broadcaster, BroadcastTo, createEvent } from './broadcaster'
 export * from './channel-state'
+// Outbound coalescing — one frame per window on a hot channel.
+export * from './coalescer'
 
 // Facade and global helpers (Laravel-style API)
 export * from './facade'
