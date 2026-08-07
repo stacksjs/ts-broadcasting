@@ -1,3 +1,18 @@
+[Compare changes](https://github.com/stacksjs/ts-broadcasting/compare/v0.0.9...v0.0.10)
+
+## 🚀 Features
+
+- coalesce outbound broadcasts on hot channels ([f656c19](https://github.com/stacksjs/ts-broadcasting/commit/f656c19)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## 🧹 Chores
+
+- release v0.0.10 ([f3d2018](https://github.com/stacksjs/ts-broadcasting/commit/f3d2018)) _(by Chris <chrisbreuer93@gmail.com>)_
+- **deps**: raise the bunfig floor to 0.15.17 ([fa68cb6](https://github.com/stacksjs/ts-broadcasting/commit/fa68cb6)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## Contributors
+
+- _Chris <chrisbreuer93@gmail.com>_
+
 [Compare changes](https://github.com/stacksjs/ts-broadcasting/compare/v0.0.8...v0.0.9)
 
 ## 🐛 Bug Fixes
