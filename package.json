@@ -41,8 +41,8 @@
     "typecheck": "bun --bun tsc --noEmit"
   },
   "devDependencies": {
-    "@stacksjs/bunpress": "^0.2.11",
-    "better-dx": "^0.2.15"
+    "@stacksjs/bunpress": "^0.2.14",
+    "better-dx": "^0.2.25"
   },
   "workspaces": [
     "packages/**"
@@ -56,8 +56,8 @@
     "commit-msg": "bunx gitlint --edit .git/COMMIT_EDITMSG"
   },
   "dependencies": {
-    "@stacksjs/clarity": "^0.3.28",
-    "bunfig": "^0.15.17"
+    "@stacksjs/clarity": "^0.3.33",
+    "bunfig": "^0.15.19"
   },
   "overrides": {
     "typescript": "^7.0.2"
