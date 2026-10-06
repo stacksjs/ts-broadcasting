@@ -334,9 +334,32 @@ The server exposes these HTTP endpoints:
 | Endpoint | Description |
 |----------|-------------|
 | `/health` | Health check (returns `{ status: 'ok', redis: ... }`) |
-| `/stats` | Server statistics (connections, channels, uptime, metrics) |
-| `/metrics` | Prometheus-format metrics for monitoring |
-| `/app`, `/ws` | WebSocket upgrade endpoints |
+| `/stats` | Server statistics (connections, channels, uptime, metrics). Off unless `endpoints.stats` |
+| `/metrics` | Prometheus-format metrics for monitoring. Off unless `endpoints.metrics` |
+| `/app`, `/ws` | WebSocket upgrade endpoints, gated by `auth.required` and `authorizeConnection` |
+
+`/stats` and `/metrics` are **off by default**: they report connection and
+channel counts and process details, and the server binds `0.0.0.0` unless told
+otherwise. Turn them on, and optionally require a bearer token, with
+`endpoints`:
+
+```ts
+const server = new BroadcastServer({
+  // ...
+  endpoints: {
+    stats: true,
+    metrics: true,
+    token: process.env.BROADCAST_ENDPOINT_TOKEN, // optional: require `Authorization: Bearer <token>`
+  },
+})
+```
+
+A disabled endpoint answers 404; an enabled one with a token answers 401 to a
+request without it. `/health` is always served.
+
+**Behaviour change in 0.0.11:** `/stats` and `/metrics` used to be served to
+anyone. They now answer 404 until enabled, so add `endpoints` (or
+`broadcast start --stats --metrics`) if you scrape them.
 
 ## Channel Types
 

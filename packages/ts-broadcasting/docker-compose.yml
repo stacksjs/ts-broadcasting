@@ -7,6 +7,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    # /metrics is off by default; the prometheus service below scrapes it.
+    command: [bun, run, dist/bin/cli.js, start, --metrics]
     ports:
       - '6001:6001' # WebSocket port
     environment:

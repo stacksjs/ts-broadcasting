@@ -15,6 +15,8 @@ export interface TestServerOptions {
   rateLimit?: boolean
   security?: boolean
   verbose?: boolean
+  /** Merged over the generated config, for options the flags above lack. */
+  config?: Partial<ServerConfig>
 }
 
 /**
@@ -76,7 +78,7 @@ export async function createTestServer(options: TestServerOptions = {}): Promise
     }
   }
 
-  const server = new BroadcastServer(config)
+  const server = new BroadcastServer({ ...config, ...options.config })
   await server.start()
 
   return server

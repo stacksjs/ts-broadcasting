@@ -50,9 +50,11 @@ describe('BroadcastServer - Core Functionality', () => {
       expect(health.status).toBe('ok')
     })
 
-    it('should provide stats endpoint', async () => {
-      const response = await fetch(`http://127.0.0.1:${port}/stats`)
+    it('should provide stats endpoint when enabled', async () => {
+      const statsServer = await createTestServer({ port: 0, config: { endpoints: { stats: true } } })
+      const response = await fetch(`http://127.0.0.1:${getServerPort(statsServer)}/stats`)
       const stats = await response.json()
+      await cleanupTestServer(statsServer)
 
       expect(response.status).toBe(200)
       expect(stats).toHaveProperty('connections')

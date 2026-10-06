@@ -294,9 +294,28 @@ The server exposes these HTTP endpoints alongside WebSocket:
 | Endpoint | Description |
 |----------|-------------|
 | `GET /health` | Health check with Redis status |
-| `GET /stats` | Server statistics (connections, channels, uptime) |
-| `GET /metrics` | Prometheus-format metrics |
+| `GET /stats` | Server statistics (connections, channels, uptime). Off unless `endpoints.stats` |
+| `GET /metrics` | Prometheus-format metrics. Off unless `endpoints.metrics` |
 | `/app`, `/ws` | WebSocket upgrade endpoints |
+
+`/stats` and `/metrics` are **off by default**: they report connection and
+channel counts and process details, and the server binds `0.0.0.0` unless told
+otherwise. Turn them on, and optionally require a bearer token, with
+`endpoints`:
+
+```ts
+const server = new BroadcastServer({
+  // ...
+  endpoints: {
+    stats: true,
+    metrics: true,
+    token: process.env.BROADCAST_ENDPOINT_TOKEN, // optional: require `Authorization: Bearer <token>`
+  },
+})
+```
+
+A disabled endpoint answers 404; an enabled one with a token answers 401 to a
+request without it. `/health` is always served.
 
 ## Middleware
 
@@ -334,11 +353,16 @@ server.auth?.authenticate(async (req) => {
 })
 ```
 
+`auth` identifies the user; on its own it does not refuse anyone. Set
+`auth.required: true` to refuse (401) every upgrade without an authenticated
+user, or use `authorizeConnection` for any other rule - see
+[Middleware](/features/middleware#connection-authorization).
+
 ## Metrics
 
 ### Prometheus Metrics
 
-When enabled, metrics are available at `GET /metrics`:
+When enabled with `endpoints.metrics`, metrics are available at `GET /metrics`:
 
 ```
 broadcasting*connections*total

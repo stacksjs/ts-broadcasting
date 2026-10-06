@@ -26,9 +26,11 @@ import type {
   PresenceChannelData,
   SubscribeMessage,
   UnsubscribeMessage,
+  User,
   WebSocketData,
 } from './types'
 import type { WebhookConfig } from './webhooks'
+import { createHash, timingSafeEqual } from 'node:crypto'
 import process from 'node:process'
 import { AcknowledgmentManager } from './acknowledgments'
 import { BatchOperationsManager } from './batch-operations'
@@ -54,6 +56,46 @@ import { PresenceHeartbeatManager } from './presence-heartbeat'
 import { RedisAdapter } from './redis-adapter'
 import { WebhookManager } from './webhooks'
 
+/**
+ * What `authorizeConnection` may return. `true`/`false` accept or refuse
+ * with a 401; the object form picks the status and message of a refusal,
+ * or, when accepting, replaces the authenticated user and attaches extra
+ * per-socket data (`ws.data.user` / `ws.data.data`).
+ */
+export type ConnectionAuthorizationResult =
+  | boolean
+  | { ok: true, user?: User | null, data?: Record<string, unknown> }
+  | { ok: false, status?: number, message?: string }
+
+/**
+ * Decides whether a WebSocket upgrade on `/app` or `/ws` goes through. It
+ * runs after `auth` (so `user` is whatever `auth` resolved, or null) and
+ * before the socket exists. A hook that throws refuses the upgrade with a
+ * 500, and one that returns nothing refuses it with a 401: a broken
+ * authorizer fails closed.
+ */
+export type ConnectionAuthorizer = (
+  req: Request,
+  user: User | null,
+) => ConnectionAuthorizationResult | void | Promise<ConnectionAuthorizationResult | void>
+
+/**
+ * The `/stats` and `/metrics` HTTP endpoints. Both report connection and
+ * channel counts and process details, and the server binds 0.0.0.0 by
+ * default, so they are off unless enabled here.
+ */
+export interface EndpointsConfig {
+  /** Serve `GET /stats`. Default: false. */
+  stats?: boolean
+  /** Serve `GET /metrics` (Prometheus text). Default: false. */
+  metrics?: boolean
+  /**
+   * When set, enabled endpoints answer only requests carrying
+   * `Authorization: Bearer <token>`, and 401 everything else.
+   */
+  token?: string
+}
+
 export interface ServerConfig extends BroadcastConfig {
   /**
    * Convenience bind address used when no named `connections` entry is
@@ -64,6 +106,14 @@ export interface ServerConfig extends BroadcastConfig {
   port?: number
   redis?: RedisConfig
   auth?: AuthConfig
+  /**
+   * Accept or refuse each WebSocket upgrade. See `ConnectionAuthorizer`.
+   */
+  authorizeConnection?: ConnectionAuthorizer
+  /**
+   * Expose `/stats` and `/metrics`. Both are off by default.
+   */
+  endpoints?: EndpointsConfig
   rateLimit?: RateLimitConfig
   security?: SecurityConfig
   debug?: boolean
@@ -275,13 +325,17 @@ export class BroadcastServer {
           return Response.json(health)
         }
 
-        // Stats endpoint
-        if (url.pathname === '/stats') {
-          return Response.json(await this.getStats())
-        }
+        // Stats and Prometheus metrics endpoints, both opt-in
+        if (url.pathname === '/stats' || url.pathname === '/metrics') {
+          const refused = this.checkEndpointAccess(req, url.pathname === '/stats' ? 'stats' : 'metrics')
+          if (refused) {
+            return refused
+          }
 
-        // Prometheus metrics endpoint
-        if (url.pathname === '/metrics') {
+          if (url.pathname === '/stats') {
+            return Response.json(await this.getStats())
+          }
+
           const { PrometheusExporter } = await import('./metrics/prometheus')
           const exporter = new PrometheusExporter(this)
           const metrics = await exporter.export()
@@ -294,10 +348,13 @@ export class BroadcastServer {
 
         // WebSocket upgrade
         if (url.pathname === '/app' || url.pathname === '/ws') {
-          // Authenticate if enabled
-          let user = null
-          if (this.auth) {
-            user = await this.auth.authenticateRequest(req)
+          // Decide before the socket exists. A refusal here is the only
+          // point at which an unauthorized client can be kept off the
+          // server entirely; once upgraded it can subscribe to every
+          // public channel.
+          const decision = await this.authorizeUpgrade(req)
+          if (!decision.ok) {
+            return new Response(decision.message, { status: decision.status })
           }
 
           const success = server.upgrade(req, {
@@ -306,7 +363,8 @@ export class BroadcastServer {
               socketId: crypto.randomUUID(),
               channels: new Set<string>(),
               connectedAt: Date.now(),
-              user: user ?? undefined,
+              user: decision.user ?? undefined,
+              ...(decision.data ? { data: decision.data } : {}),
             } satisfies WebSocketData,
           })
 
@@ -358,6 +416,88 @@ export class BroadcastServer {
       socketId: 'server',
       data: { event: 'server_start' },
     })
+  }
+
+  /**
+   * Run `auth` and `authorizeConnection` for an upgrade request.
+   *
+   * Previously the upgrade went through whatever `auth` returned - a null
+   * user simply became an anonymous socket - so configuring `auth` kept
+   * nobody out.
+   */
+  private async authorizeUpgrade(req: Request): Promise<
+    | { ok: true, user: User | null, data?: Record<string, unknown> }
+    | { ok: false, status: number, message: string }
+  > {
+    const refuse = (status?: number, message?: string) => ({
+      ok: false as const,
+      status: status && status >= 400 && status <= 599 ? status : 401,
+      message: message || 'Unauthorized',
+    })
+
+    try {
+      const user = this.auth ? await this.auth.authenticateRequest(req) : null
+
+      if (!user && this.auth?.isRequired()) {
+        return refuse(401)
+      }
+
+      const authorize = this.config.authorizeConnection
+      if (!authorize) {
+        return { ok: true, user }
+      }
+
+      const result = await authorize(req, user)
+      if (result === true) {
+        return { ok: true, user }
+      }
+      if (!result) {
+        return refuse(401)
+      }
+      if (!result.ok) {
+        return refuse(result.status, result.message)
+      }
+
+      return {
+        ok: true,
+        user: result.user !== undefined ? result.user : user,
+        data: result.data,
+      }
+    }
+    catch (error) {
+      // Never surface the reason to the client; a thrown authorizer is a
+      // server fault, and it refuses rather than letting the socket in.
+      console.error('[ts-broadcasting] connection authorization threw:', error)
+      return refuse(500, 'Connection authorization error')
+    }
+  }
+
+  /**
+   * Gate for `/stats` and `/metrics`: a 404 while the endpoint is not
+   * enabled (indistinguishable from any unknown path), a 401 when a token
+   * is configured and the request does not carry it, otherwise null.
+   */
+  private checkEndpointAccess(req: Request, endpoint: 'stats' | 'metrics'): Response | null {
+    const endpoints = this.config.endpoints
+    if (!endpoints?.[endpoint]) {
+      return new Response('Not found', { status: 404 })
+    }
+
+    if (endpoints.token) {
+      const header = req.headers.get('authorization') ?? ''
+      const presented = header.startsWith('Bearer ') ? header.slice(7) : ''
+      // Compare digests so the comparison is constant-time whatever the
+      // lengths of the two strings.
+      const digest = (value: string) => createHash('sha256').update(value).digest()
+      if (!presented || !timingSafeEqual(digest(presented), digest(endpoints.token))) {
+        return new Response('Unauthorized', {
+          status: 401,
+          headers: { 'WWW-Authenticate': 'Bearer' },
+        })
+      }
+    }
+
+    return null
   }
 
   /**

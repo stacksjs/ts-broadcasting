@@ -12,13 +12,19 @@ interface StartOptions {
   port?: number
   verbose?: boolean
   connection?: string
+  stats?: boolean
+  metrics?: boolean
 }
 
 interface StatsOptions {
   connection?: string
   watch?: boolean
   interval?: number
+  token?: string
 }
+
+// Bearer token for /stats and /metrics, shared by `start` and `stats`.
+const endpointToken = process.env.BROADCAST_ENDPOINT_TOKEN || undefined
 
 let server: BroadcastServer | null = null
 
@@ -28,6 +34,8 @@ cli
   .option('--port <port>', 'The port to listen on')
   .option('--connection <connection>', 'The connection to use from config')
   .option('--verbose', 'Enable verbose logging')
+  .option('--stats', 'Serve GET /stats (off by default; set BROADCAST_ENDPOINT_TOKEN to require a bearer token)')
+  .option('--metrics', 'Serve GET /metrics (off by default; set BROADCAST_ENDPOINT_TOKEN to require a bearer token)')
   .example('broadcast start')
   .example('broadcast start --host 0.0.0.0 --port 6001')
   .example('broadcast start --verbose')
@@ -56,7 +64,14 @@ cli
         connectionConfig.port = options.port
       }
 
-      server = new BroadcastServer(serverConfig)
+      server = new BroadcastServer({
+        ...serverConfig,
+        endpoints: {
+          stats: options?.stats === true,
+          metrics: options?.metrics === true,
+          token: endpointToken,
+        },
+      })
 
       // Handle graceful shutdown
       process.on('SIGINT', async () => {
@@ -87,6 +102,7 @@ cli
   .option('--connection <connection>', 'The connection to query')
   .option('--watch', 'Watch mode - continuously update stats')
   .option('--interval <interval>', 'Update interval in seconds for watch mode', { default: 5 })
+  .option('--token <token>', 'Bearer token for /stats (default: BROADCAST_ENDPOINT_TOKEN)')
   .example('broadcast stats')
   .example('broadcast stats --watch')
   .example('broadcast stats --watch --interval 2')
@@ -105,7 +121,11 @@ cli
 
     const fetchStats = async () => {
       try {
-        const response = await fetch(url)
+        const token = options?.token || endpointToken
+        const response = await fetch(url, token ? { headers: { Authorization: `Bearer ${token}` } } : undefined)
+        if (response.status === 404) {
+          throw new Error('/stats is not enabled on this server (start it with --stats, or set endpoints.stats)')
+        }
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}: ${response.statusText}`)
         }

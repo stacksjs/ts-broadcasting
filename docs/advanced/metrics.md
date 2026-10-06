@@ -4,7 +4,8 @@ ts-broadcasting includes a built-in Prometheus metrics exporter accessible at th
 
 ## Setup
 
-Metrics are available automatically when the server is running. No additional configuration is needed.
+The `/metrics` (and `/stats`) endpoint is off by default. Enable it with
+`endpoints`, ideally behind a token:
 
 ```ts
 const server = new BroadcastServer({
@@ -12,11 +13,21 @@ const server = new BroadcastServer({
   connections: {
     bun: { driver: 'bun', host: '0.0.0.0', port: 6001 },
   },
+  endpoints: {
+    metrics: true,
+    stats: true,
+    token: process.env.BROADCAST_ENDPOINT_TOKEN, // optional
+  },
 })
 
 await server.start()
 // Metrics available at http://localhost:6001/metrics
+// (with a token: curl -H "Authorization: Bearer $BROADCAST_ENDPOINT_TOKEN" ...)
 ```
+
+A disabled endpoint answers 404, and an enabled one with a `token` answers 401
+to any request without `Authorization: Bearer <token>`. Before 0.0.11 both
+endpoints were served to anyone who could reach the port.
 
 ## Available Metrics
 
@@ -90,7 +101,7 @@ console.log(metricsText)
 
 ## Stats Endpoint
 
-The `/stats` endpoint returns JSON statistics:
+The `/stats` endpoint (enabled with `endpoints.stats`) returns JSON statistics:
 
 ```json
 {

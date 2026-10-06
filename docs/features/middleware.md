@@ -36,6 +36,7 @@ server.auth?.authenticate(async (req) => {
 ```ts
 interface AuthConfig {
   enabled?: boolean
+  required?: boolean // refuse (401) upgrades without an authenticated user
   cookie?: {
     name?: string
     secure?: boolean
@@ -51,6 +52,37 @@ interface AuthConfig {
 ```
 
 Authentication runs during the WebSocket upgrade request. Authenticated user data is attached to `ws.data.user` and available in channel authorization callbacks.
+
+By itself, `auth` only identifies users: a request it cannot authenticate is
+still upgraded, as an anonymous socket that can join public channels. Set
+`required: true` to refuse those upgrades with a 401.
+
+### Connection Authorization
+
+`authorizeConnection` decides whether an upgrade on `/app` or `/ws` goes
+through at all. It runs after `auth`, receives the user `auth` resolved (or
+`null`), and runs before the socket exists:
+
+```ts
+const server = new BroadcastServer({
+  // ...
+  authorizeConnection: async (req, user) => {
+    const token = new URL(req.url).searchParams.get('token')
+    const session = token ? await sessions.find(token) : null
+    if (!session)
+      return { ok: false, status: 401, message: 'Unauthorized' }
+
+    // Accept, and set what channel authorizers see as socket.data.user /
+    // socket.data.data.
+    return { ok: true, user: { id: session.userId }, data: { tenant: session.tenant } }
+  },
+})
+```
+
+It may return `true` / `false`, or `{ ok: false, status?, message? }` to pick the
+refusal's status, or `{ ok: true, user?, data? }`. It fails closed: returning
+nothing refuses with a 401, and throwing refuses with a 500 (the error is
+logged, never sent to the client).
 
 ## Rate Limiting
 
@@ -173,7 +205,7 @@ const metrics = server.monitoring?.getMetrics()
 // - error
 ```
 
-Metrics are exposed via the `/metrics` Prometheus endpoint and the `/stats` JSON endpoint.
+Metrics are exposed via the `/metrics` Prometheus endpoint and the `/stats` JSON endpoint, both off unless enabled with `endpoints: { metrics: true, stats: true }` (see [Metrics](/advanced/metrics)).
 
 ## Next Steps
 

@@ -12,6 +12,13 @@ import process from 'node:process'
 
 export interface AuthConfig {
   enabled?: boolean
+  /**
+   * Refuse the WebSocket upgrade (401) when no user can be authenticated
+   * from the request. Off by default, so public channels keep working for
+   * anonymous visitors while private/presence channels still see
+   * `socket.data.user` for whoever did present a credential.
+   */
+  required?: boolean
   cookie?: {
     name?: string
     secure?: boolean
@@ -34,6 +41,7 @@ export class AuthenticationManager {
   constructor(config: AuthConfig = {}) {
     this.config = {
       enabled: config.enabled ?? true,
+      required: config.required ?? false,
       cookie: {
         name: config.cookie?.name || 'auth_token',
         secure: config.cookie?.secure ?? true,
@@ -53,6 +61,13 @@ export class AuthenticationManager {
    */
   authenticate(callback: AuthCallback): void {
     this.callback = callback
+  }
+
+  /**
+   * Whether a connection without an authenticated user must be refused.
+   */
+  isRequired(): boolean {
+    return this.config.enabled && this.config.required
   }
 
   /**
