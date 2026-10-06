@@ -1,3 +1,27 @@
+[Compare changes](https://github.com/stacksjs/ts-broadcasting/compare/v0.0.10...v0.0.11)
+
+## 💥 Breaking Changes
+
+- fix(server)!: refuse unauthorized upgrades and stop serving /stats and /metrics to anyone ([55ed318](https://github.com/stacksjs/ts-broadcasting/commit/55ed318)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## 🚀 Features
+
+- **server**: one outbound path with hooks, multi-socket exclusion and host/port websocket options ([90b5a93](https://github.com/stacksjs/ts-broadcasting/commit/90b5a93)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## 🐛 Bug Fixes
+
+- **docs**: use the config keys bunpress actually has ([80f2f1e](https://github.com/stacksjs/ts-broadcasting/commit/80f2f1e)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## 🧹 Chores
+
+- release v0.0.11 ([8465b19](https://github.com/stacksjs/ts-broadcasting/commit/8465b19)) _(by Chris <chrisbreuer93@gmail.com>)_
+- run @stacksjs/logsmith, not the unrelated npm 'logsmith' ([c6fc1aa](https://github.com/stacksjs/ts-broadcasting/commit/c6fc1aa)) _(by Chris <chrisbreuer93@gmail.com>)_
+- release through @stacksjs/bumpx, not the unrelated npm 'bumpx' ([4e7bd04](https://github.com/stacksjs/ts-broadcasting/commit/4e7bd04)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## Contributors
+
+- _Chris <chrisbreuer93@gmail.com>_
+
 [Compare changes](https://github.com/stacksjs/ts-broadcasting/compare/v0.0.9...v0.0.10)
 
 ## 🚀 Features
