@@ -68,15 +68,13 @@ describe('Broadcaster', () => {
     })
 
     it('should broadcast with exclusion', () => {
-      // Note: send() doesn't accept excludeSocketId parameter
-      // Use toOthers() for exclusion
-      broadcaster.send('news', 'article.created', { title: 'Test' })
+      broadcaster.send('news', 'article.created', { title: 'Test' }, ['socket-1', 'socket-2'])
 
       expect(mockServer.broadcast).toHaveBeenCalledWith(
         'news',
         'article.created',
         { title: 'Test' },
-        undefined,
+        ['socket-1', 'socket-2'],
       )
     })
   })
@@ -97,8 +95,19 @@ describe('Broadcaster', () => {
         'news',
         'article.created',
         { title: 'Test' },
-        undefined, // excludeSocketId is not automatically passed in current implementation
+        'socket-123',
       )
+    })
+
+    it('should exclude the socket when broadcasting an event via toOthers', async () => {
+      await broadcaster.toOthers('socket-123').broadcast({
+        shouldBroadcast: () => true,
+        broadcastOn: () => 'news',
+        broadcastAs: () => 'article.created',
+        broadcastWith: () => ({ title: 'Test' }),
+      })
+
+      expect(mockServer.broadcast).toHaveBeenCalledWith('news', 'article.created', { title: 'Test' }, 'socket-123')
     })
   })
 
@@ -147,7 +156,7 @@ describe('Broadcaster', () => {
       event.send(broadcaster)
 
       expect(event.excludeSocketId).toBe('socket-123')
-      expect(mockServer.broadcast).toHaveBeenCalled()
+      expect(mockServer.broadcast).toHaveBeenCalledWith('news', 'article.created', { title: 'Test' }, 'socket-123')
     })
 
     it('should support multiple channels in anonymous event', () => {

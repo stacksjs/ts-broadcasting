@@ -25,9 +25,9 @@ export class Broadcaster {
   }
 
   /**
-   * Broadcast an event
+   * Broadcast an event, optionally leaving out one or more socket IDs
    */
-  async broadcast(event: BroadcastEvent): Promise<void> {
+  async broadcast(event: BroadcastEvent, exclude?: string | string[]): Promise<void> {
     // Check if event should broadcast
     if (!event.shouldBroadcast()) {
       return
@@ -46,6 +46,7 @@ export class Broadcaster {
       event: eventName,
       channel: channels[0], // Will broadcast to each channel separately
       data,
+      socketId: exclude,
     }
 
     // Check if should use queue
@@ -60,15 +61,17 @@ export class Broadcaster {
   }
 
   /**
-   * Broadcast to specific channels with event name and data
+   * Broadcast to specific channels with event name and data, optionally
+   * leaving out one or more socket IDs
    */
-  send<TData = unknown>(channels: string | string[], event: string, data: TData): void {
+  send<TData = unknown>(channels: string | string[], event: string, data: TData, exclude?: string | string[]): void {
     const normalizedChannels = this.normalizeChannels(channels)
 
     const message: BroadcastMessage = {
       event,
       channel: normalizedChannels[0],
       data,
+      socketId: exclude,
     }
 
     this.sendBroadcast(message, normalizedChannels)
@@ -144,14 +147,16 @@ export class BroadcastTo {
    * Broadcast an event
    */
   async broadcast(event: BroadcastEvent): Promise<void> {
-    await this.broadcaster.broadcast(event)
+    // The excluded socket used to be stored here and never passed on, so
+    // `toOthers(socketId)` reached the sender too.
+    await this.broadcaster.broadcast(event, this.excludeSocketId)
   }
 
   /**
    * Send to specific channels
    */
   send<TData = unknown>(channels: string | string[], event: string, data: TData): void {
-    this.broadcaster.send(channels, event, data)
+    this.broadcaster.send(channels, event, data, this.excludeSocketId)
   }
 }
 
@@ -222,7 +227,7 @@ export class AnonymousEvent<TData = unknown> {
    */
   send(broadcaster: Broadcaster): void {
     for (const channel of this.channels) {
-      broadcaster.send(channel, this.eventName, this.data)
+      broadcaster.send(channel, this.eventName, this.data, this.excludeSocketId)
     }
   }
 

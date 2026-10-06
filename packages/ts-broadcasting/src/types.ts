@@ -60,7 +60,7 @@ export interface BroadcastServerContract {
   server: BunServer<WebSocketData>
   start: () => Promise<void>
   stop: () => Promise<void>
-  broadcast: (channel: string, event: string, data: unknown, excludeSocketId?: string) => void
+  broadcast: (channel: string, event: string, data: unknown, exclude?: string | string[]) => void
   getConnectionCount: () => number
   getSubscriberCount: (channel: string) => number
 }
@@ -126,7 +126,8 @@ export interface BroadcastMessage {
   event: string
   channel: string
   data: unknown
-  socketId?: string
+  /** Socket ID(s) to leave out. */
+  socketId?: string | string[]
 }
 
 // Queue support

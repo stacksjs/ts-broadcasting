@@ -76,6 +76,56 @@ The `options` object within a connection config:
 | `publishToSelf` | `boolean` | `false` | Whether publishers receive their own messages |
 | `perMessageDeflate` | `boolean \| object` | `true` | Enable per-message compression |
 
+A server built with `host`/`port` instead of `connections` takes the same
+options as `websocket`; a named connection's `options` win over it:
+
+```ts
+const server = new BroadcastServer({
+  host: '0.0.0.0',
+  port: 6001,
+  websocket: {
+    idleTimeout: 60,               // with sendPings, a socket that answers no ping for this long is closed
+    sendPings: true,
+    backpressureLimit: 1024 * 1024,
+    closeOnBackpressureLimit: true, // drop a consumer that falls 1 MB behind
+  },
+})
+```
+
+These are the server's dead-socket and slow-consumer controls. Bun pings an
+idle socket and closes it if nothing (not even a pong) arrives within the idle
+timeout, which Bun rounds up to a multiple of 4 seconds.
+
+## Broadcast Hooks
+
+Every broadcast, from whichever API (`server.broadcast()`, the broadcaster,
+the `Broadcast` facade, queued jobs, Redis-relayed messages), runs the
+broadcast hooks before its frame is serialized, including when no local socket
+is subscribed. A hook may return extra top-level fields for the frame:
+
+```ts
+let seq = 0
+const server = new BroadcastServer({
+  // ...
+  beforeBroadcast: ({ channel, event, data }) => ({ seq: ++seq }),
+})
+
+// or, at any time; returns a function that removes the hook
+const remove = server.addBroadcastHook(({ channel }) => {
+  metrics.count(channel)
+})
+```
+
+Clients receive `{ seq, event, channel, data }`. A hook cannot overwrite
+`event`, `channel` or `data`, and a hook that throws is logged and skipped.
+
+## Excluding Sockets
+
+`server.broadcast(channel, event, data, exclude)` takes one socket ID or an
+array of them - the IDs clients receive in `connection_established`, not user
+IDs. `Broadcast.toOthers(socketId)` and `broadcaster.send(..., exclude)` pass
+it through.
+
 ## Server Configuration
 
 When creating a `BroadcastServer`, the config extends `BroadcastConfig` with additional options:

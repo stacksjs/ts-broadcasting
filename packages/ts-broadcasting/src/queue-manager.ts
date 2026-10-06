@@ -110,7 +110,7 @@ export class BroadcastJob implements JobContract {
     private channel: string,
     private event: string,
     private data: unknown,
-    private excludeSocketId?: string,
+    private excludeSocketId?: string | string[],
   ) {
     this.tries = 3
     this.timeout = 30000 // 30 seconds
@@ -141,7 +141,7 @@ export class DelayedBroadcastJob extends BroadcastJob {
     event: string,
     data: unknown,
     delayMs: number,
-    excludeSocketId?: string,
+    excludeSocketId?: string | string[],
   ) {
     super(channel, event, data, excludeSocketId)
     this.delay = delayMs
@@ -259,7 +259,7 @@ export class BroadcastQueueManager {
     data: unknown,
     options?: {
       delay?: number
-      excludeSocketId?: string
+      excludeSocketId?: string | string[]
       priority?: number
     },
   ): Promise<Job<any> | Job<any>[]> {

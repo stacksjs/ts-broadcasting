@@ -22,7 +22,8 @@ export interface RedisMessage {
   channel: string
   event: string
   data: unknown
-  socketId?: string
+  /** Socket ID(s) to leave out on every instance. */
+  socketId?: string | string[]
   serverId?: string
 }
 
@@ -91,7 +92,7 @@ export class RedisAdapter {
   /**
    * Broadcast a message to all servers
    */
-  async broadcast(channel: string, event: string, data: unknown, excludeSocketId?: string): Promise<void> {
+  async broadcast(channel: string, event: string, data: unknown, excludeSocketId?: string | string[]): Promise<void> {
     const message: RedisMessage = {
       type: 'broadcast',
       channel,

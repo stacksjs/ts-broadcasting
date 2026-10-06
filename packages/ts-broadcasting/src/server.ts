@@ -23,6 +23,7 @@ import type { RedisConfig } from './redis-adapter'
 import type {
   BroadcastConfig,
   ClientEventMessage,
+  ConnectionOptions,
   PresenceChannelData,
   SubscribeMessage,
   UnsubscribeMessage,
@@ -96,6 +97,27 @@ export interface EndpointsConfig {
   token?: string
 }
 
+/**
+ * A broadcast about to be sent: what `server.broadcast()` was called with.
+ */
+export interface OutboundBroadcast {
+  channel: string
+  event: string
+  data: unknown
+}
+
+/**
+ * Runs for every broadcast, from every API (`server.broadcast()`, the
+ * broadcaster, the facade, queued jobs, Redis-relayed messages), before the
+ * frame is serialized. It runs even when no local socket is subscribed, so
+ * it sees every message, not every delivery. The object it returns is
+ * merged into the frame as extra top-level fields beside `event`, `channel`
+ * and `data` (which it cannot overwrite), e.g. a sequence number clients
+ * read as `message.seq`. A hook that throws is logged and skipped; the
+ * broadcast still goes out.
+ */
+export type BroadcastHook = (message: OutboundBroadcast) => Record<string, unknown> | void
+
 export interface ServerConfig extends BroadcastConfig {
   /**
    * Convenience bind address used when no named `connections` entry is
@@ -104,6 +126,24 @@ export interface ServerConfig extends BroadcastConfig {
    */
   host?: string
   port?: number
+  /**
+   * Bun WebSocket options (`idleTimeout`, `sendPings`, `backpressureLimit`,
+   * `closeOnBackpressureLimit`, `maxPayloadLength`, `perMessageDeflate`)
+   * for a server configured with `host`/`port` rather than `connections`.
+   * Options on the named connection entry take precedence.
+   *
+   * These are the server's liveness and slow-consumer controls: with
+   * `sendPings` (Bun's default) a socket that answers no ping and sends
+   * nothing for `idleTimeout` seconds is closed, and a socket whose
+   * buffered bytes pass `backpressureLimit` is closed when
+   * `closeOnBackpressureLimit` is set.
+   */
+  websocket?: ConnectionOptions
+  /**
+   * Runs for every outbound broadcast before it is serialized. See
+   * `BroadcastHook`; more can be added with `server.addBroadcastHook()`.
+   */
+  beforeBroadcast?: BroadcastHook
   redis?: RedisConfig
   auth?: AuthConfig
   /**
@@ -147,6 +187,7 @@ export class BroadcastServer {
   private server?: BunServer<WebSocketData>
   private connections: Map<string, ServerWebSocket<WebSocketData>> = new Map()
   private config: ServerConfig
+  private broadcastHooks: Set<BroadcastHook> = new Set()
 
   // Core features
   public channels: ChannelManager
@@ -176,6 +217,9 @@ export class BroadcastServer {
 
   constructor(config: ServerConfig) {
     this.config = config
+    if (config.beforeBroadcast) {
+      this.broadcastHooks.add(config.beforeBroadcast)
+    }
     this.channels = new ChannelManager()
     this.broadcaster = new Broadcaster(this, config)
     this.helpers = new BroadcastHelpers(this, this.broadcaster)
@@ -290,8 +334,11 @@ export class BroadcastServer {
       // Handle Redis messages for horizontal scaling
       this.redis.onMessage((message) => {
         if (message.type === 'broadcast') {
-          // Broadcast to local subscribers (excluding the originating socket)
-          this.broadcast(message.channel, message.event, message.data, message.socketId)
+          // Deliver to this instance's subscribers only. Going through
+          // broadcast() republished the message to Redis under this
+          // server's id, so every other instance - the originator
+          // included - received it again, and relayed it again.
+          this.deliver(message.channel, message.event, message.data, message.socketId)
         }
       })
 
@@ -308,6 +355,7 @@ export class BroadcastServer {
     const connectionConfig = this.config.connections?.[this.config.default || 'bun']
     const host = connectionConfig?.host ?? this.config.host ?? '0.0.0.0'
     const port = connectionConfig?.port ?? this.config.port ?? 6001
+    const wsOptions = this.websocketOptions()
 
     this.server = Bun.serve({
       hostname: host,
@@ -396,12 +444,13 @@ export class BroadcastServer {
         },
 
         // Apply connection options
-        idleTimeout: connectionConfig?.options?.idleTimeout,
-        maxPayloadLength: connectionConfig?.options?.maxPayloadLength,
-        backpressureLimit: connectionConfig?.options?.backpressureLimit,
-        closeOnBackpressureLimit: connectionConfig?.options?.closeOnBackpressureLimit,
-        sendPings: connectionConfig?.options?.sendPings,
-        perMessageDeflate: connectionConfig?.options?.perMessageDeflate,
+        idleTimeout: wsOptions.idleTimeout,
+        maxPayloadLength: wsOptions.maxPayloadLength,
+        backpressureLimit: wsOptions.backpressureLimit,
+        closeOnBackpressureLimit: wsOptions.closeOnBackpressureLimit,
+        sendPings: wsOptions.sendPings,
+        publishToSelf: wsOptions.publishToSelf,
+        perMessageDeflate: wsOptions.perMessageDeflate,
       },
     })
 
@@ -416,6 +465,26 @@ export class BroadcastServer {
       socketId: 'server',
       data: { event: 'server_start' },
     })
+  }
+
+  /**
+   * The Bun WebSocket options in effect: top-level `websocket`, overridden
+   * by the named connection entry's `options`.
+   */
+  private websocketOptions(): ConnectionOptions {
+    const connectionOptions = this.config.connections?.[this.config.default || 'bun']?.options
+    return { ...this.config.websocket, ...connectionOptions }
+  }
+
+  /**
+   * Register a hook that runs for every outbound broadcast (see
+   * `BroadcastHook`). Returns a function that removes it again.
+   */
+  addBroadcastHook(hook: BroadcastHook): () => void {
+    this.broadcastHooks.add(hook)
+    return () => {
+      this.broadcastHooks.delete(hook)
+    }
   }
 
   /**
@@ -593,7 +662,7 @@ export class BroadcastServer {
       event: 'connection_established',
       data: {
         socket_id: ws.data.socketId,
-        activity_timeout: this.config.connections?.[this.config.default || 'bun']?.options?.idleTimeout || 120,
+        activity_timeout: this.websocketOptions().idleTimeout || 120,
       },
     })
 
@@ -1017,50 +1086,85 @@ export class BroadcastServer {
   }
 
   /**
-   * Broadcast a message to all subscribers of a channel
+   * Broadcast a message to all subscribers of a channel, on this instance
+   * and (with Redis) every other.
+   *
+   * `exclude` is one socket ID or several - socket IDs as assigned in
+   * `connection_established`, not user IDs.
    */
-  broadcast(channel: string, event: string, data: unknown, excludeSocketId?: string): void {
-    const message = JSON.stringify({
-      event,
-      channel,
-      data,
-    })
+  broadcast(channel: string, event: string, data: unknown, exclude?: string | string[]): void {
+    this.deliver(channel, event, data, exclude)
 
-    if (this.server) {
-      // Use Bun's efficient publish method
-      if (excludeSocketId) {
-        // Send to all except one socket
-        const subscribers = this.channels.getSubscribers(channel)
-        for (const socketId of subscribers) {
-          if (socketId !== excludeSocketId) {
-            const ws = this.connections.get(socketId)
-            if (ws) {
-              ws.send(message)
-            }
+    // Broadcast to Redis for horizontal scaling
+    if (this.redis) {
+      this.redis.broadcast(channel, event, data, exclude).catch((error) => {
+        console.error('Redis broadcast error:', error)
+      })
+    }
+  }
+
+  /**
+   * Deliver a broadcast to this instance's subscribers. Every broadcast,
+   * local or relayed from Redis, passes through here, so this is where the
+   * broadcast hooks run.
+   */
+  private deliver(channel: string, event: string, data: unknown, exclude?: string | string[]): void {
+    const extra = this.runBroadcastHooks(channel, event, data)
+    const excluded = typeof exclude === 'string' ? [exclude] : (exclude ?? [])
+
+    // Nobody here is listening: skip serializing the frame at all. The
+    // hooks above have already seen the message, so a replay buffer still
+    // records it for a client that is between connections.
+    if (this.server && this.channels.getSubscriberCount(channel) > 0) {
+      const message = JSON.stringify({
+        ...extra,
+        event,
+        channel,
+        data,
+      })
+
+      if (excluded.length > 0) {
+        // Send to every subscriber but the excluded sockets
+        const skip = new Set(excluded)
+        for (const socketId of this.channels.getSubscribers(channel)) {
+          if (!skip.has(socketId)) {
+            this.connections.get(socketId)?.send(message)
           }
         }
       }
       else {
-        // Send to all subscribers
+        // Use Bun's efficient publish method
         this.server.publish(channel, message)
       }
-    }
-
-    // Broadcast to Redis for horizontal scaling
-    if (this.redis) {
-      this.redis.broadcast(channel, event, data, excludeSocketId).catch((error) => {
-        console.error('Redis broadcast error:', error)
-      })
     }
 
     // Emit broadcast metric
     this.monitoring?.emit({
       type: 'broadcast',
       timestamp: Date.now(),
-      socketId: excludeSocketId || 'server',
+      socketId: excluded[0] || 'server',
       channel,
-      data: { event, dataSize: JSON.stringify(data).length },
+      data: { event, dataSize: JSON.stringify(data ?? null).length },
     })
+  }
+
+  /**
+   * Collect the extra top-level frame fields the broadcast hooks return.
+   */
+  private runBroadcastHooks(channel: string, event: string, data: unknown): Record<string, unknown> {
+    const extra: Record<string, unknown> = {}
+    for (const hook of this.broadcastHooks) {
+      try {
+        const fields = hook({ channel, event, data })
+        if (fields) {
+          Object.assign(extra, fields)
+        }
+      }
+      catch (error) {
+        console.error('[ts-broadcasting] broadcast hook threw:', error)
+      }
+    }
+    return extra
   }
 
   /**
