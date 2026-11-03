@@ -185,6 +185,11 @@ export interface ServerConfig extends BroadcastConfig {
 
 export class BroadcastServer {
   private server?: BunServer<WebSocketData>
+
+  /** The listener's actual port after start, including a kernel-assigned port for port: 0. */
+  get port(): number | undefined {
+    return this.server?.port
+  }
   private connections: Map<string, ServerWebSocket<WebSocketData>> = new Map()
   private config: ServerConfig
   private broadcastHooks: Set<BroadcastHook> = new Set()
@@ -455,7 +460,7 @@ export class BroadcastServer {
     })
 
     if (this.config.verbose) {
-      console.warn(`Broadcasting server started on ${host}:${port}`)
+      console.warn(`Broadcasting server started on ${host}:${this.port}`)
     }
 
     // Emit server start metric

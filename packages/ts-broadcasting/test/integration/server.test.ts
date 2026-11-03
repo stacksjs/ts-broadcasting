@@ -30,6 +30,21 @@ describe('BroadcastServer - Core Functionality', () => {
   })
 
   describe('Server Lifecycle', () => {
+    it('exposes the bound ephemeral port for independent servers', async () => {
+      const other = await createTestServer({ port: 0 })
+      try {
+        expect(server.port).toBeGreaterThan(0)
+        expect(other.port).toBeGreaterThan(0)
+        expect(other.port).not.toBe(server.port)
+        for (const bound of [server, other]) {
+          const response = await fetch(`http://127.0.0.1:${bound.port}/health`)
+          expect(response.status).toBe(200)
+          expect((await response.json() as { status: string }).status).toBe('ok')
+        }
+      }
+      finally { await cleanupTestServer(other) }
+    })
+
     it('should start server successfully', () => {
       expect(server).toBeDefined()
       expect(port).toBeGreaterThan(0)

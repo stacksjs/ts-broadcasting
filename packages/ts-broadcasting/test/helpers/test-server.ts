@@ -87,8 +87,9 @@ export async function createTestServer(options: TestServerOptions = {}): Promise
 /**
  * Get the actual port the server is listening on
  */
-export function getServerPort(server: any): number {
-  return server.server?.port || 6001
+export function getServerPort(server: BroadcastServer): number {
+  if (server.port === undefined) throw new Error('The test server has not started')
+  return server.port
 }
 
 /**
