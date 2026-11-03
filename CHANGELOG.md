@@ -1,3 +1,17 @@
+[Compare changes](https://github.com/stacksjs/ts-broadcasting/compare/v0.0.11...v0.0.12)
+
+## 🚀 Features
+
+- expose the bound broadcast listener port ([05204d6](https://github.com/stacksjs/ts-broadcasting/commit/05204d6)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## 🧹 Chores
+
+- release v0.0.12 ([411c179](https://github.com/stacksjs/ts-broadcasting/commit/411c179)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## Contributors
+
+- _Chris <chrisbreuer93@gmail.com>_
+
 [Compare changes](https://github.com/stacksjs/ts-broadcasting/compare/v0.0.10...v0.0.11)
 
 ## 💥 Breaking Changes
