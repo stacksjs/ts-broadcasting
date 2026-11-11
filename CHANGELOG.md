@@ -1,3 +1,13 @@
+[Compare changes](https://github.com/stacksjs/ts-broadcasting/compare/v0.0.12...v0.0.13)
+
+## 🐛 Bug Fixes
+
+- deliver the strict batch SDK through one verified build ([e418cf9](https://github.com/stacksjs/ts-broadcasting/commit/e418cf9)) _(by Chris)_
+
+## Contributors
+
+- _Chris_
+
 [Compare changes](https://github.com/stacksjs/ts-broadcasting/compare/v0.0.11...v0.0.12)
 
 ## 🚀 Features

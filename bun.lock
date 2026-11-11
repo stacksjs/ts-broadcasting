@@ -14,7 +14,7 @@
     },
     "packages/ts-broadcasting": {
       "name": "ts-broadcasting",
-      "version": "0.0.12",
+      "version": "0.0.13",
       "bin": {
         "broadcast": "./dist/bin/cli.js",
       },
