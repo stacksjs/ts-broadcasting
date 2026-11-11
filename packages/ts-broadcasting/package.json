@@ -36,9 +36,13 @@
     "test:integration": "bun test test/integration/",
     "test:e2e": "bun test test/e2e/",
     "test:watch": "bun test --watch",
-    "prepublishOnly": "bun --bun build.ts",
+    "prepublishOnly": "bun run --cwd ../.. build:release",
     "build": "bun --bun build.ts && bun run compile",
     "compile": "bun build ./bin/cli.ts --compile --minify --outfile bin/broadcast",
-    "dev": "bun --watch bin/cli.ts start"
+    "dev": "bun --watch bin/cli.ts start",
+    "test:package": "bun test ./test/package.acceptance.ts"
+  },
+  "devDependencies": {
+    "@dtsx/bun": "^0.11.47"
   }
 }

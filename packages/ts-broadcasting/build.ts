@@ -2,24 +2,22 @@ import { rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import process from 'node:process'
-import { dts } from 'bun-plugin-dtsx'
+import { dts } from '@dtsx/bun'
 
-// eslint-disable-next-line ts/no-top-level-await
-const result = await Bun.build({
-  entrypoints: ['src/index.ts', 'bin/cli.ts'],
-  outdir: './dist',
-  splitting: true,
-  minify: true,
-  target: 'bun',
-  plugins: [dts()],
-})
-
-if (!result.success) {
-  console.error('Build failed:')
-  for (const log of result.logs)
-    console.error(log)
-
-  process.exit(1)
+export async function buildBroadcasting(): Promise<void> {
+  const cwd = import.meta.dir
+  await rm(join(cwd, 'dist'), { recursive: true, force: true })
+  const result = await Bun.build({
+    entrypoints: [join(cwd, 'src/index.ts'), join(cwd, 'bin/cli.ts')],
+    root: cwd,
+    outdir: join(cwd, 'dist'),
+    splitting: true,
+    minify: true,
+    target: 'bun',
+    plugins: [dts({ cwd, root: './src', outdir: './dist', moduleSpecifierMode: 'node' })],
+  })
+  if (!result.success) throw new AggregateError(result.logs, 'Broadcasting build failed')
+  await assertCompilable(join(cwd, 'dist/src/index.js'))
 }
 
 /**
@@ -73,4 +71,4 @@ async function assertCompilable(entry: string): Promise<void> {
 }
 
 // eslint-disable-next-line ts/no-top-level-await
-await assertCompilable('./dist/src/index.js')
+if (import.meta.main) await buildBroadcasting()

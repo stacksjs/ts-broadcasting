@@ -15,3 +15,5 @@ packages/ts-broadcasting/bin/broadcast
 .cursor
 /pantry
 pantry
+
+/bin/broadcast*

@@ -20,24 +20,43 @@ jobs:
           fetch-depth: 0
 
       - name: Setup Pantry
-        uses: home-lang/pantry/packages/action@main
+        uses: pantry-pm/pantry/packages/action@362da3ef0602f51232ab9431da8d05c84c5f49ba
+        with:
+          version: 0.11.197
+          install: false
 
       - name: Install Dependencies
-        run: bun install
+        run: bun install --frozen-lockfile
+
+      - name: Build and qualify all release artifacts
+        run: bun run build:release
+
+      - name: Publish verified package to Pantry
+        run: pantry publish './packages/ts-broadcasting' --verify-existing --ignore-scripts
+        env:
+          PANTRY_REGISTRY_TOKEN: ${{ secrets.PANTRY_TOKEN }}
 
       - name: Publish
-        run: pantry publish --npm --access public
+        run: pantry publish './packages/ts-broadcasting' --npm --access public --ignore-scripts
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Checksum the native CLI archives
+        working-directory: bin
+        run: |
+          test "$(find . -maxdepth 1 -name 'broadcast-*.zip' | wc -l)" -eq 5
+          sha256sum broadcast-*.zip > checksums.txt
+          sha256sum --check checksums.txt
 
       - name: Create GitHub Release
         uses: stacksjs/action-releaser@v1.2.9
         with:
           files: |
-            packages/ts-broadcasting/bin/broadcast-linux-x64.zip
-            packages/ts-broadcasting/bin/broadcast-linux-arm64.zip
-            packages/ts-broadcasting/bin/broadcast-windows-x64.zip
-            packages/ts-broadcasting/bin/broadcast-darwin-x64.zip
-            packages/ts-broadcasting/bin/broadcast-darwin-arm64.zip
+            bin/broadcast-linux-x64.zip
+            bin/broadcast-linux-arm64.zip
+            bin/broadcast-windows-x64.zip
+            bin/broadcast-darwin-x64.zip
+            bin/broadcast-darwin-arm64.zip
+            bin/checksums.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
