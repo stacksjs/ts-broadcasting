@@ -52,7 +52,7 @@
     "build:release": "bun run build && bun run compile && bun run compile:all && bun run zip && bun run test:package"
   },
   "devDependencies": {
-    "better-dx": "^0.2.38"
+    "better-dx": "^0.2.40"
   },
   "workspaces": [
     "packages/**"
@@ -66,8 +66,8 @@
     "commit-msg": "bunx gitlint --edit .git/COMMIT_EDITMSG"
   },
   "dependencies": {
-    "@stacksjs/clarity": "^0.3.28",
-    "bunfig": "^0.15.17"
+    "@stacksjs/clarity": "^0.3.33",
+    "bunfig": "^0.15.21"
   },
   "overrides": {
     "typescript": "^7.0.2"
