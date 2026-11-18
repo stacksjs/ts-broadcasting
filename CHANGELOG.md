@@ -1,3 +1,13 @@
+[Compare changes](https://github.com/stacksjs/ts-broadcasting/compare/v0.0.13...v0.0.14)
+
+## ✨ Features
+
+- **server**: bind with SO_REUSEPORT for zero-downtime deploys (#158) ([52b1d3f](https://github.com/stacksjs/ts-broadcasting/commit/52b1d3f)) _(by Chris)_ ([#158](https://github.com/stacksjs/ts-broadcasting/issues/158))
+
+## Contributors
+
+- _Chris_
+
 [Compare changes](https://github.com/stacksjs/ts-broadcasting/compare/v0.0.12...v0.0.13)
 
 ## 🐛 Bug Fixes
