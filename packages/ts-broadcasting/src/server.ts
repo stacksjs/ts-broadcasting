@@ -127,6 +127,21 @@ export interface ServerConfig extends BroadcastConfig {
   host?: string
   port?: number
   /**
+   * Bind with `SO_REUSEPORT`, so a second server can listen on the same port
+   * while this one is still serving.
+   *
+   * This is what a zero-downtime deploy needs: the new release starts beside
+   * the old one, passes its health check, and only then is the old one
+   * stopped. Without it the new release fails to bind (`Is port 6001 in
+   * use?`) and the deploy has to stop the old server first, dropping every
+   * connected socket for the gap. Linux balances new connections across the
+   * listeners; existing sockets stay where they are until their server stops.
+   *
+   * The named connection's `reusePort` takes precedence.
+   * @default false
+   */
+  reusePort?: boolean
+  /**
    * Bun WebSocket options (`idleTimeout`, `sendPings`, `backpressureLimit`,
    * `closeOnBackpressureLimit`, `maxPayloadLength`, `perMessageDeflate`)
    * for a server configured with `host`/`port` rather than `connections`.
@@ -360,11 +375,13 @@ export class BroadcastServer {
     const connectionConfig = this.config.connections?.[this.config.default || 'bun']
     const host = connectionConfig?.host ?? this.config.host ?? '0.0.0.0'
     const port = connectionConfig?.port ?? this.config.port ?? 6001
+    const reusePort = connectionConfig?.reusePort ?? this.config.reusePort ?? false
     const wsOptions = this.websocketOptions()
 
     this.server = Bun.serve({
       hostname: host,
       port,
+      reusePort,
 
       fetch: async (req, server) => {
         const url = new URL(req.url)

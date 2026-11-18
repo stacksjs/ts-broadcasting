@@ -22,6 +22,8 @@ export interface ConnectionConfig {
   cluster?: string
   encrypted?: boolean
   useTLS?: boolean
+  /** Bind with `SO_REUSEPORT` for zero-downtime cutovers. See `ServerConfig.reusePort`. */
+  reusePort?: boolean
   options?: ConnectionOptions
 }
 
