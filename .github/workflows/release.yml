@@ -34,7 +34,7 @@ jobs:
       - name: Publish verified package to Pantry
         run: pantry publish './packages/ts-broadcasting' --verify-existing --ignore-scripts
         env:
-          PANTRY_REGISTRY_TOKEN: ${{ secrets.PANTRY_TOKEN }}
+          PANTRY_TOKEN: ${{ secrets.PANTRY_TOKEN }}
 
       - name: Publish
         run: pantry publish './packages/ts-broadcasting' --npm --access public --ignore-scripts
